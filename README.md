@@ -38,6 +38,9 @@ python3 -m http.server 8765
 | `?nosend` | 玩完不送出全班數據 |
 | `?full` | 完整版：所有卡片和每一張理論卡（預設是給同學的 8 分鐘精簡版） |
 | `?timer` | 右上角顯示碼表，彩排計時用 |
+| `?finale=hidden` | 直接看某一種結局（`hidden`／`reach`／`crash`／`fail`，用示範數字，不送全班數據） |
+
+正式網址：https://bloom-game-eta.vercel.app/
 
 ## 求助資訊
 

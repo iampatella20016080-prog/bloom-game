@@ -44,6 +44,10 @@
       crashes: [],                      // { stat, side, day }
       theories: [],                     // 拿到的理論卡 id
       last: {},                         // 最近一次 Boss 的結果，給理論卡填字
+      record: {},                       // 每個 Boss 的結果，結局和分享卡用
+      ending: null,                     // 結局 id
+      metrics: [],                      // 重寫 App 選的新指標
+      demo: false,                      // 報告者的結局示範（不送全班數據）
     };
   }
 
@@ -459,6 +463,7 @@
       const cfg = D.bosses[bossId];
       const result = await BOSSES[bossId](cfg);
       S.last = result.vars;
+      S.record[bossId] = result.vars;
       addHours(result.hours);
       applyEffects(result.effects);
       await resultScreen(cfg, result);
@@ -468,6 +473,7 @@
       else if (ids.length) await theoryScreen(ids[0], ids.slice(1));
       await resolveCrashes();
     }
+    if (S.ch + 1 >= D.chapters.length) return finale(); // 最後一章打完 → 結局
     chapterEnd();
   }
 
@@ -561,6 +567,210 @@
     actions.chapterTitle();
   };
 
+  // ---------- 結局：App 當機 → 後台 → 結局 → 重寫 App → 結局分享卡 ----------
+  function pickEnding() {
+    const f = S.flags;
+    if (f.talk && (sharing() || f.shareLeave) && (f['left:mascot'] || 0) >= D.finale.hiddenRefuse) return 'hidden';
+    if (bmiOf(S.stats.bmi) <= D.settings.bmiGoal) return 'reach';
+    if (S.crashes.length >= D.finale.crashThreshold) return 'crash';
+    return 'fail';
+  }
+
+  const metricLabel = (id) => D.rewrite.metrics.find((m) => m.id === id)?.label || '';
+
+  // 結局各畫面裡可以用的變數
+  function finaleVars() {
+    const r = S.record;
+    return {
+      bmi: bmiOf(S.stats.bmi).toFixed(1),
+      gap: Math.max(0, bmiOf(S.stats.bmi) - D.settings.bmiGoal).toFixed(1),
+      mood: S.stats.mood,
+      crashes: S.crashes.length,
+      hoursMe: Math.round(S.hours.me),
+      hoursPartner: Math.round(S.hours.partner),
+      money: r.whack?.money ?? '0',
+      sleep: r.tetris?.sleep ?? 0,
+      help: r.whack?.help ?? 0,
+      covered: r.gaze?.covered ?? 0,
+      refused: S.flags['left:mascot'] || 0,
+      metrics: S.metrics.map(metricLabel).join('、'),
+    };
+  }
+
+  // 顯示一個畫面，按下 data-act="finaleNext" 的按鈕就往下走
+  function step(html, cls) {
+    return new Promise((resolve) => {
+      actions.finaleNext = () => resolve();
+      screen(html, cls);
+    });
+  }
+
+  const sceneHTML = (lines) => lines.map((s) => {
+    const who = D.characters[s.who];
+    return `<div class="scene-line"><div class="avatar" style="--c:${who.color}">${avatarHTML(who)}</div>
+      <div><b>${esc(who.name)}</b>${esc(s.text)}</div></div>`;
+  }).join('');
+
+  async function finale(forced) {
+    hideReply();
+    S.busy = true;
+    const myRun = runId;
+    const alive = () => myRun === runId; // 報告者跳去別的地方就停
+    const id = forced || pickEnding();
+    const e = D.endings[id];
+    S.ending = id;
+    S.day = D.settings.totalDays;
+    el.day.textContent = `產後第 ${S.day} 天`;
+
+    // 1. App 當機
+    const c = D.finale.crash;
+    await step(`
+      <div class="glitch-flower">${flowerSVG()}</div>
+      <div class="end-title glitch">${esc(c.title)}</div>
+      <p class="end-text">${esc(c.text)}</p>
+      <div class="crash-btns">${c.buttons.map((b) => `<button class="btn ghost" data-act="finaleNext">${esc(b)}</button>`).join('')}</div>`,
+    'dark crashed');
+    if (!alive()) return;
+
+    // 2. 後台
+    const b = D.finale.backend;
+    const vars = finaleVars();
+    await step(`
+      <div class="term">
+        <div class="term-title">${esc(b.title)}</div>
+        ${b.lines.map((l, i) => `<p class="term-line" style="animation-delay:${(0.3 + i * 0.45).toFixed(2)}s">&gt; ${esc(fill(l, vars))}</p>`).join('')}
+        <p class="term-note" style="animation-delay:${(0.3 + b.lines.length * 0.45).toFixed(2)}s">${esc(b.note)}</p>
+      </div>
+      <button class="btn term-btn" data-act="finaleNext">${esc(b.button)}</button>`, 'terminal scroll');
+    if (!alive()) return;
+
+    // 3. 結局（達標、隱藏結局時精神條解鎖）
+    if (id === 'reach' || id === 'hidden') { S.flags.hideMood = 0; renderStats(); }
+    const ev = finaleVars();
+    await step(`
+      <div class="chapter-no">${esc(e.label)}</div>
+      <div class="end-title">${esc(fill(e.title, ev))}</div>
+      <p class="end-text">${esc(fill(e.text, ev))}</p>
+      ${e.scene ? sceneHTML(e.scene) : ''}
+      ${e.screening ? `<div class="screening"><b>${esc(e.screening.title)}</b><p>${esc(e.screening.text)}</p>
+        <p class="help-line">${esc(e.screening.help)}</p></div>` : ''}
+      <div class="app-push">${flowerSVG()}<div><b>BLOOM</b><br>${esc(e.app)}</div></div>
+      <button class="btn" data-act="finaleNext">繼續</button>`, `ending ending-${id} scroll`);
+    if (!alive()) return;
+    if (e.theory) await theoryScreen(e.theory);
+    if (!alive()) return;
+
+    // 4. 重寫 App（每個人都會玩到：我們的觀點）
+    S.metrics = await rewritePick();
+    if (!alive()) return;
+    S.flags.hideMood = 0;
+    renderStats();
+    const R = D.rewrite;
+    const nv = finaleVars();
+    await step(`
+      <div class="chapter-no">BLOOM 2.0</div>
+      <div class="chapter-title">你設計的新指標</div>
+      <div class="v2-cards">${S.metrics.map((mid) => {
+        const m = R.metrics.find((x) => x.id === mid);
+        return `<div class="v2-card"><div class="v2-head"><span>${m.icon}</span><b>${esc(m.label)}</b></div>
+          <p>${esc(fill(m.value, nv))}</p><small>${esc(m.basis)}</small></div>`;
+      }).join('')}</div>
+      <div class="viewpoint"><b>${esc(R.viewpointTitle)}</b>${R.viewpoint.map((v) => `<p>${esc(v)}</p>`).join('')}
+        <blockquote>${esc(R.quote)}<cite>${esc(R.quoteSource)}</cite></blockquote></div>
+      <button class="btn" data-act="finaleNext">繼續</button>`, 'scroll');
+    if (!alive()) return;
+    S.last = nv;
+    if (R.theory) await theoryScreen(R.theory);
+    if (!alive()) return;
+
+    // 5. 結局分享卡（全班數據在這裡送出，才包含新指標）
+    const sent = finishGame();
+    shareScreen(sent);
+  }
+
+  // 重寫 App：選 3 個新指標
+  function rewritePick() {
+    const R = D.rewrite;
+    const picked = [];
+    return new Promise((resolve) => {
+      actions.pickMetric = (ds) => {
+        const i = picked.indexOf(ds.id);
+        if (i >= 0) picked.splice(i, 1);
+        else if (picked.length < R.pick) picked.push(ds.id);
+        document.querySelectorAll('.metric').forEach((m) => {
+          const on = picked.includes(m.dataset.id);
+          m.classList.toggle('on', on);
+          m.setAttribute('aria-pressed', on);
+        });
+        $('#pickCount').textContent = `已選 ${picked.length}／${R.pick}`;
+        $('#publishBtn').disabled = picked.length !== R.pick;
+      };
+      actions.publishRewrite = () => { if (picked.length === R.pick) resolve([...picked]); };
+      screen(`
+        <div class="chapter-no">${esc(R.title)}</div>
+        <div class="old-metrics"><span>${esc(R.oldLabel)}</span>${R.old.map((o) => `<s>${esc(o)}</s>`).join('')}</div>
+        <div class="chapter-title small">${esc(R.ask)}</div>
+        <div class="metric-grid">${R.metrics.map((m) => `
+          <button class="metric" data-act="pickMetric" data-id="${m.id}" aria-pressed="false"><span>${m.icon}</span>${esc(m.label)}</button>`).join('')}
+        </div>
+        <p class="note" id="pickCount">已選 0／${R.pick}</p>
+        <button class="btn" id="publishBtn" data-act="publishRewrite" disabled>${esc(R.done)}</button>`, 'scroll');
+    });
+  }
+
+  function pickTitle() {
+    const ratio = S.hours.partner ? S.hours.me / S.hours.partner : (S.hours.me ? Infinity : 0);
+    const ok = (w) => (!w.ending || w.ending === S.ending)
+      && (!w.crashes || S.crashes.length >= w.crashes)
+      && (!w.hoursRatio || ratio >= w.hoursRatio)
+      && Object.entries(w.flags || {}).every(([k, n]) => (S.flags[k] || 0) >= n);
+    return D.titles.find((t) => ok(t.when)) || D.titles[D.titles.length - 1];
+  }
+
+  let lastSent = false;
+  function shareScreen(sent = lastSent) {
+    lastSent = sent;
+    const v = finaleVars();
+    const t = pickTitle();
+    const accepted = Object.entries(S.flags).filter(([k]) => k.startsWith('right:')).reduce((s, [, n]) => s + n, 0);
+    const rows = [
+      `答應了 ${accepted} 個要求（${S.flags['right:mascot'] || 0} 個來自 App）`,
+      `照顧時數：你 ${v.hoursMe} 小時・伴侶 ${v.hoursPartner} 小時`,
+      `崩潰 ${v.crashes} 次`,
+      S.record.whack ? `被扣款 NT$${v.money}` : '',
+      S.record.gaze ? `擋掉 ${v.covered} 道視線` : '',
+      v.metrics ? `新指標：${v.metrics}` : '',
+    ].filter(Boolean);
+    screen(`
+      <div class="share-card">
+        <div class="share-top">${flowerSVG()}<span>${esc(D.share.heading)}</span><em>${esc(D.endings[S.ending].label)}</em></div>
+        <div class="share-title">${esc(t.title)}</div>
+        <p class="share-desc">${esc(t.desc)}</p>
+        <ul class="share-stats">${rows.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
+      </div>
+      <p class="note">${esc(D.share.note)}</p>
+      ${sent ? `<p class="note">${esc(D.intro.sentNote)}</p>` : ''}
+      <button class="btn" data-act="deck">${esc(D.share.deck)}</button>
+      <button class="btn ghost" data-act="restart">${esc(D.share.again)}</button>
+      ${backToMenu()}`, 'scroll');
+  }
+  actions.shareBack = () => shareScreen();
+
+  // 報告者示範結局用：沒有實際玩，也給一組像樣的數字
+  function seedDemo(id) {
+    resetGame(D.chapters.length - 1);
+    S.demo = true;
+    S.day = 180;
+    S.hours = { me: 128, partner: 22, mil: 14 };
+    S.flags = { hideMood: 1, 'right:mascot': 6, 'right:mil': 2, 'left:mascot': 5, talk: 1, negotiate: 1 };
+    S.record = { tetris: { sleep: 3 }, whack: { money: '8,960', help: 1 }, gaze: { covered: 7 } };
+    S.crashes = Array.from({ length: id === 'crash' ? 3 : 1 }, () => ({ stat: 'mood', side: 'low', day: 0 }));
+    S.stats = { mood: 12, baby: 48, family: 52, bmi: id === 'reach' ? 40 : 58 };
+    S.theories = Object.keys(D.theories).filter((t) => t !== 'uenoMaterial');
+    renderStats();
+  }
+  actions.menuFinale = (ds) => { seedDemo(ds.e); finale(ds.e); };
+
   // ---------- 報告者模式（網址加 ?menu） ----------
   const QR_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
   const backToMenu = () => (presenter ? '<button class="btn ghost" data-act="menu">回報告者選單</button>' : '');
@@ -577,6 +787,9 @@
         ${D.chapters.map((ch, n) => `
           <button data-act="menuChapter" data-n="${n}">${esc(ch.no)}・${esc(ch.title)}</button>
           ${ch.boss ? `<button class="sub" data-act="menuBoss" data-n="${n}">Boss：${esc(D.bosses[ch.boss].title)}</button>` : ''}`).join('')}
+        <div class="menu-label">結局示範（App 當機 → 後台 → 結局 → 重寫 App）</div>
+        ${['hidden', 'reach', 'crash', 'fail'].map((e) => `
+          <button class="sub" data-act="menuFinale" data-e="${e}">${esc(D.endings[e].label)}：${esc(D.endings[e].title.replace('{crashes}', '3'))}</button>`).join('')}
         <button data-act="deck">理論卡圖鑑（文獻討論）</button>
         <button data-act="results">全班結果（即時）</button>
         <button data-act="share">分享給同學（QR code）</button>
@@ -587,20 +800,28 @@
   actions.menuChapter = (ds) => { resetGame(+ds.n); actions.chapterTitle(); };
   actions.menuBoss = (ds) => { resetGame(+ds.n); afterCards(); };
 
-  // 理論卡圖鑑：報告時直接投影當文獻討論
+  // 理論卡圖鑑：報告時直接投影當文獻討論。玩家玩完後只看得到自己收集到的卡
   actions.deck = () => {
     const list = Object.entries(D.theories);
+    const mine = !presenter && S.theories.length > 0;
+    const have = (id) => !mine || S.theories.includes(id);
     screen(`
       <div class="chapter-no">理論卡圖鑑</div>
       <div class="chapter-title">文獻討論</div>
-      <div class="deck">${list.map(([id, t]) => `
+      <div class="deck">${list.map(([id, t]) => (have(id) ? `
         <button class="deck-card" data-act="theoryDetail" data-id="${esc(id)}">
           <span class="tc-author">${esc(t.author)}</span>
           <span class="deck-concept">${esc(t.concept)}</span>
           <span class="tc-source">${esc(t.source)}</span>
-        </button>`).join('')}</div>
-      <p class="note">目前有 ${list.length} 張。每打完一個 Boss 會拿到一張。</p>
-      ${presenter ? backToMenu() : '<button class="btn" data-act="splash">開始遊戲</button>'}`);
+        </button>` : `
+        <div class="deck-card locked" aria-label="還沒收集的理論卡">
+          <span class="tc-author">？？？</span>
+          <span class="deck-concept">還沒收集</span>
+        </div>`)).join('')}</div>
+      <p class="note">${mine ? `你收集了 ${S.theories.length}／${list.length} 張。` : `一共 ${list.length} 張。每打完一個 Boss 會拿到一張。`}</p>
+      ${presenter ? backToMenu()
+        : S.ending ? '<button class="btn" data-act="shareBack">回到我的結局</button>'
+        : '<button class="btn" data-act="splash">開始遊戲</button>'}`, 'scroll');
   };
   actions.theoryDetail = (ds) => {
     screen(`
@@ -1242,7 +1463,7 @@
   // ---------- 全班數據（設定在 config.js，步驟見〈全班數據與發布步驟.md〉） ----------
   const CFG = window.BLOOM_CONFIG || {};
   // 表單每一題標題後面的英文代號；遊戲靠它對應題目
-  const CLASS_KEYS = ['ending', 'crashes', 'hoursMe', 'hoursPartner', 'diet1200', 'negotiate', 'covered', 'leave'];
+  const CLASS_KEYS = ['ending', 'crashes', 'hoursMe', 'hoursPartner', 'diet1200', 'negotiate', 'covered', 'leave', 'metrics'];
 
   // 從「預先填入的連結」找出表單 ID 和每一題的 entry 編號
   function classForm() {
@@ -1263,7 +1484,8 @@
   function classRecord() {
     const yes = (k) => (S.flags[k] ? '是' : '否');
     return {
-      ending: `第 ${S.ch + 1} 章完成`,
+      ending: S.ending ? D.endings[S.ending].label : `第 ${S.ch + 1} 章完成`,
+      metrics: S.metrics.map(metricLabel).join(','),
       crashes: S.crashes.length,
       hoursMe: Math.round(S.hours.me),
       hoursPartner: Math.round(S.hours.partner),
@@ -1277,7 +1499,7 @@
   // 玩完最後一章：匿名送出選擇。報告者模式不送，示範時才不會灌票。
   function finishGame() {
     const form = classForm();
-    if (!form || presenter || S.sent || q.has('nosend')) return false;
+    if (!form || presenter || S.demo || S.sent || q.has('nosend')) return false;
     S.sent = true;
     const body = new URLSearchParams();
     for (const [k, v] of Object.entries(classRecord())) if (form.entries[k]) body.append(form.entries[k], String(v));
@@ -1318,8 +1540,11 @@
   function demoRows() {
     let seed = 7;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const labels = D.rewrite.metrics.map((m) => m.label);
+    const endingLabels = ['達標結局', '失敗結局', '崩潰結局', '隱藏結局'];
     return Array.from({ length: 24 }, () => ({
-      ending: '第 2 章完成',
+      ending: endingLabels[Math.min(3, Math.floor(rnd() * rnd() * 5))],
+      metrics: [...labels].sort(() => rnd() - 0.5).slice(0, 3).join(','),
       crashes: String(Math.floor(rnd() * 3)),
       hoursMe: String(Math.round(90 + rnd() * 40)),
       hoursPartner: String(Math.round(10 + rnd() * 25)),
@@ -1346,8 +1571,14 @@
       { label: '至少崩潰一次', pred: (r) => Number(r.crashes) > 0, tag: `平均 ${avg('crashes').toFixed(1)} 次・媽媽不能 Game Over` },
       { label: '產假後回去上班', pred: (r) => r.leave === '回去上班', tag: '上野：雙重負擔（10.5）' },
       { label: '產假後請育嬰留停', pred: (r) => r.leave === '育嬰留停', tag: '對照：2025 年申請育嬰留停的人約 72% 是女性' },
+      { label: '找到隱藏結局（解除安裝）', pred: (r) => r.ending === '隱藏結局', tag: '上野：要改變的是物質基礎（4.1）' },
     ];
     const me = avg('hoursMe'), pt = avg('hoursPartner'), top = Math.max(me, pt, 1);
+    // 重寫 App：全班最常選的新指標（前 3 名）
+    const picks = {};
+    for (const r of rows) for (const m of r.metrics.split(',').map((s) => s.trim()).filter(Boolean)) picks[m] = (picks[m] || 0) + 1;
+    const topPicks = Object.entries(picks).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const pickPct = (c) => (n ? Math.round((c / n) * 100) : 0);
     const time = meta.time.toLocaleTimeString('zh-TW', { hour12: false });
 
     const body = resultsTable
@@ -1357,6 +1588,7 @@
             ${items.map((it) => `<tr><td>${esc(it.label)}</td><td>${pct(it.pred)}%</td><td>${count(it.pred)}／${n}</td></tr>`).join('')}
             <tr><td>平均照顧時數：你</td><td colspan="2">${Math.round(me)} 小時</td></tr>
             <tr><td>平均照顧時數：伴侶</td><td colspan="2">${Math.round(pt)} 小時</td></tr>
+            ${topPicks.map(([label, c], i) => `<tr><td>新指標第 ${i + 1} 名：${esc(label)}</td><td>${pickPct(c)}%</td><td>${c}／${n}</td></tr>`).join('')}
           </tbody>
         </table>`
       : `${items.map((it) => {
@@ -1372,7 +1604,14 @@
           <div class="cmp"><span>你</span><div class="cmp-bar"><i class="me" style="width:${(me / top) * 100}%"></i></div><b>${Math.round(me)} 小時</b></div>
           <div class="cmp"><span>伴侶</span><div class="cmp-bar"><i class="pt" style="width:${(pt / top) * 100}%"></i></div><b>${Math.round(pt)} 小時</b></div>
           <div class="res-tag">時數是遊戲依選擇累計的模型，不是真實調查</div>
-        </div>`;
+        </div>
+        ${topPicks.length ? `<div class="res-row" title="重寫 App 時，全班最常選的新指標">
+          <div class="res-head"><span>全班最想換成的新指標</span></div>
+          ${topPicks.map(([label, c]) => `
+            <div class="res-head small"><span>${esc(label)}</span><b>${pickPct(c)}%</b></div>
+            <div class="meter"><i style="width:${pickPct(c)}%"></i></div>`).join('')}
+          <div class="res-tag">我們的觀點：要改的是指標、分工和制度</div>
+        </div>` : ''}`;
 
     return `
       <div class="res-hero"><b>${n}</b><span>位同學玩完</span></div>
@@ -1425,6 +1664,7 @@
   //   ?nosend   玩完不送出全班數據（測試用）
   //   ?full     完整版：顯示所有卡片和每一張理論卡（預設是給同學的 8 分鐘精簡版）
   //   ?timer    右上角顯示碼表，彩排時計時用
+  //   ?finale=hidden|reach|crash|fail  直接看某一種結局（用示範數字，不送全班數據）
   $('#brandFlower').innerHTML = flowerSVG();
   const q = new URLSearchParams(location.search);
   const chOf = (v) => clamp((parseInt(v, 10) || 1) - 1, 0, D.chapters.length - 1);
@@ -1448,6 +1688,7 @@
   } else if (q.has('deck')) actions.deck();
   else if (q.has('ch')) { resetGame(chOf(q.get('ch'))); actions.chapterTitle(); }
   else if (q.has('boss')) { resetGame(chOf(q.get('boss'))); afterCards(); }
+  else if (q.has('finale')) { const e = D.endings[q.get('finale')] ? q.get('finale') : 'fail'; seedDemo(e); finale(e); }
   else if (q.has('skip')) actions.chapterTitle();
   else actions.splash();
 })();

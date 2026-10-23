@@ -499,6 +499,99 @@ button { font: inherit; color: inherit; }
 .wk-msg { min-height: 1.5em; text-align: center; font-weight: 700; color: #ffb3d4; }
 .wk-msg.pop { animation: pop .4s; }
 
+/* ---------- 結局：App 當機 ---------- */
+.overlay.crashed { background: #0b0b0f; }
+.glitch-flower .flower { width: 120px; height: 120px; animation: jitter .18s steps(2) infinite; filter: hue-rotate(160deg) saturate(2.5); }
+.glitch-flower .mouth { d: path("M43 57 L57 57"); }
+@keyframes jitter { 50% { transform: translate(3px, -2px) skewX(6deg); } }
+.glitch { position: relative; animation: glitch 1.2s infinite steps(1); }
+@keyframes glitch {
+  0%, 100% { text-shadow: none; transform: none; }
+  10% { text-shadow: 3px 0 #ff2d6f, -3px 0 #2de2ff; transform: translateX(-2px); }
+  12% { text-shadow: none; transform: none; }
+  55% { text-shadow: -4px 0 #ff2d6f, 4px 0 #2de2ff; transform: translateX(3px) skewX(-8deg); }
+  58% { text-shadow: none; transform: none; }
+}
+.crash-btns { display: flex; gap: 8px; margin-top: 10px; }
+.crash-btns .btn.ghost { min-width: 120px; color: #ddd; border: 1px solid #444; }
+
+/* ---------- 結局：後台（黑底綠字） ---------- */
+.overlay.terminal { background: #050805; color: #4dff88; }
+.term { width: min(100%, 340px); text-align: left; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; line-height: 1.6; }
+.term-title { color: #b6ffcf; font-weight: 700; margin-bottom: 10px; }
+.term-line, .term-note { opacity: 0; animation: type-in .35s forwards; margin-bottom: 6px; }
+.term-note { color: #7fa88d; font-size: 11px; margin-top: 10px; }
+@keyframes type-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+.overlay.terminal .btn { background: #4dff88; color: #050805; box-shadow: none; font-family: ui-monospace, Menlo, monospace; }
+
+/* ---------- 結局畫面 ---------- */
+.overlay.ending { background: linear-gradient(180deg, #fff8fb, #ffeef5); }
+.overlay.ending .app-push, .overlay.share .app-push { background: #fff; color: var(--ink); box-shadow: 0 6px 18px rgba(120, 40, 80, .12); }
+.overlay.ending-crash, .overlay.ending-fail { background: linear-gradient(180deg, #24161d, #3a2230); color: #fbeef3; }
+.overlay.ending-crash .app-push, .overlay.ending-fail .app-push { background: rgba(255, 255, 255, .1); color: #fbeef3; box-shadow: none; }
+.scene-line {
+  width: min(100%, 320px); display: flex; gap: 10px; align-items: center; text-align: left;
+  margin-top: 10px; padding: 10px 12px; border-radius: 16px; background: #fff; box-shadow: 0 4px 14px rgba(120, 40, 80, .1);
+  font-size: 14px; line-height: 1.5; animation: type-in .4s both;
+}
+.scene-line:nth-of-type(2) { animation-delay: .5s; }
+.scene-line:nth-of-type(3) { animation-delay: 1s; }
+.scene-line .avatar { width: 38px; height: 38px; font-size: 22px; border-width: 2px; flex: none; }
+.scene-line b { display: block; font-size: 12px; color: var(--ink-soft); }
+.screening {
+  width: min(100%, 320px); margin-top: 16px; padding: 14px 16px; border-radius: 16px; text-align: left;
+  background: #fff; border: 2px solid #c6b8ff; font-size: 14px; line-height: 1.6;
+}
+.screening b { display: block; margin-bottom: 4px; }
+.screening .help-line { color: #5b3fb8; font-weight: 700; max-width: none; }
+
+/* ---------- 重寫 App ---------- */
+.chapter-title.small { font-size: 18px; margin: 8px 0 12px; }
+.old-metrics { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 10px; margin-top: 8px; font-size: 14px; color: var(--ink-soft); }
+.old-metrics span { width: 100%; font-size: 12px; }
+.old-metrics s { text-decoration-thickness: 2px; text-decoration-color: var(--red); }
+.metric-grid { width: min(100%, 340px); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metric {
+  min-height: 56px; border: 2px solid transparent; border-radius: 14px; padding: 8px 10px; cursor: pointer;
+  background: #fff; box-shadow: 0 3px 10px rgba(120, 40, 80, .1);
+  display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; text-align: left;
+}
+.metric span { font-size: 22px; }
+.metric.on { border-color: var(--mint); background: #eafaf3; }
+.btn:disabled { opacity: .4; cursor: default; }
+.v2-cards { width: min(100%, 340px); display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.v2-card { padding: 12px 14px; border-radius: 16px; background: #fff; border-left: 5px solid var(--mint); box-shadow: 0 3px 10px rgba(120, 40, 80, .1); }
+.v2-head { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.v2-card p { margin: 4px 0; font-size: 14px; line-height: 1.55; }
+.v2-card small { font-size: 11px; color: var(--ink-soft); }
+.viewpoint {
+  width: min(100%, 340px); margin-top: 16px; padding: 16px; border-radius: 18px; text-align: left;
+  background: var(--ink); color: #fff; font-size: 14px; line-height: 1.7;
+}
+.viewpoint > b { display: block; font-size: 16px; margin-bottom: 6px; color: #ffd86b; }
+.viewpoint p { margin-bottom: 6px; }
+.viewpoint blockquote { margin-top: 10px; padding-left: 10px; border-left: 3px solid #ffd86b; font-size: 14px; }
+.viewpoint cite { display: block; font-style: normal; font-size: 11px; opacity: .75; margin-top: 2px; }
+
+/* ---------- 結局分享卡 ---------- */
+.share-card {
+  width: min(100%, 320px); padding: 18px; border-radius: 24px; text-align: left; color: #fff;
+  background: linear-gradient(150deg, #ff8fb8, #b8a1e8); box-shadow: 0 14px 36px rgba(120, 40, 80, .28);
+}
+.share-top { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.share-top .flower { width: 28px; height: 28px; }
+.share-top em { margin-left: auto; font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: rgba(255, 255, 255, .25); }
+.share-title { font-size: 28px; font-weight: 800; margin: 12px 0 4px; }
+.share-desc { font-size: 14px; opacity: .95; }
+.share-stats { list-style: none; margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.share-stats li { padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, .2); font-size: 13px; }
+
+/* 圖鑑裡還沒收集的卡 */
+.deck-card.locked { background: repeating-linear-gradient(45deg, #f4e6ec 0 6px, #fbf2f6 6px 12px); box-shadow: none; color: var(--ink-soft); cursor: default; }
+.menu-label { margin-top: 8px; font-size: 12px; color: var(--ink-soft); text-align: left; }
+.res-head.small { margin-top: 6px; font-size: 13px; }
+.res-head.small b { font-size: 15px; }
+
 /* 彩排碼表（?timer） */
 .play-timer {
   position: fixed; top: 12px; right: 12px; z-index: 100; padding: 6px 12px; border-radius: 99px;
