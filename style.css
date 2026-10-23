@@ -587,6 +587,13 @@ button { font: inherit; color: inherit; }
 
 /* Boss 結算放在理論卡上方時 */
 .end-text.small { font-size: 14px; line-height: 1.6; }
+
+/* 白底的卡片一律用深色字，不要繼承深色主題（夜奶、聚餐、打地鼠）的淺色字 */
+.tc-front, .theory-static, .deck-card, .scene-line, .screening, .v2-card,
+.metric, .res-row, .res-table, .menu button, .bubble { color: var(--ink); }
+/* 理論卡是按鈕：用滑鼠或手指點的時候不要出現外框，用鍵盤時才顯示 */
+.theory-card:focus:not(:focus-visible) { outline: none; }
+.theory-card:focus-visible { outline: 3px solid var(--pink-deep); outline-offset: 4px; border-radius: 24px; }
 .overlay.night .note, .overlay.dusk .note, .overlay.neon .note, .overlay.dark .note { color: #e2d2dc; }
 
 /* 圖鑑裡還沒收集的卡 */
@@ -632,7 +639,7 @@ button { font: inherit; color: inherit; }
 
 /* ---------- 理論卡 ---------- */
 .theory-card {
-  position: relative; width: min(100%, 320px); height: 400px; margin: 14px 0 4px;
+  position: relative; width: min(100%, 320px); height: 470px; margin: 14px 0 4px;
   border: 0; background: none; perspective: 1000px; cursor: pointer; text-align: left;
 }
 .tc-face {
@@ -649,10 +656,10 @@ button { font: inherit; color: inherit; }
 .theory-card.flipped .tc-back { transform: rotateY(-180deg); }
 .theory-card.flipped .tc-front { transform: rotateY(0); }
 .tc-author { font-size: 12px; letter-spacing: 2px; color: var(--pink-deep); font-weight: 700; }
-.tc-concept { font-size: 22px; font-weight: 800; line-height: 1.3; }
+.tc-concept { font-size: 20px; font-weight: 800; line-height: 1.3; }
 .tc-source { font-size: 12px; color: var(--ink-soft); }
-.tc-quote { font-size: 14px; line-height: 1.6; border-left: 3px solid var(--pink); padding-left: 10px; }
-.tc-exp, .tc-plain { font-size: 14px; line-height: 1.6; background: var(--pink-soft); border-radius: 12px; padding: 8px 10px; }
+.tc-quote { font-size: 13.5px; line-height: 1.6; border-left: 3px solid var(--pink); padding-left: 10px; }
+.tc-exp, .tc-plain { font-size: 13.5px; line-height: 1.55; background: var(--pink-soft); border-radius: 12px; padding: 8px 10px; }
 .tc-plain { background: #efe9ff; }
 .tc-exp b, .tc-plain b { display: block; font-size: 11px; color: var(--ink-soft); }
 
@@ -675,8 +682,9 @@ button { font: inherit; color: inherit; }
 
 /* ---------- 可愛逐漸崩壞：每一章 App 越來越飽和、越來越不對勁 ---------- */
 .phone { transition: filter 1.2s; }
+/* 掃描線在全螢幕畫面（理論卡、結局）底下，不影響閱讀 */
 .phone::after {
-  content: ""; position: absolute; inset: 0; z-index: 44; pointer-events: none; opacity: 0;
+  content: ""; position: absolute; inset: 0; z-index: 39; pointer-events: none; opacity: 0;
   background: repeating-linear-gradient(0deg, rgba(40, 0, 20, .09) 0 1px, transparent 1px 3px);
   transition: opacity 1.2s;
 }
