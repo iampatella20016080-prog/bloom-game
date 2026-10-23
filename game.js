@@ -1637,7 +1637,8 @@
     const refresh = async () => {
       if (!box.isConnected) return clearInterval(timer);
       try {
-        const rows = demo ? demoRows() : parseSheet(await loadSheet(id));
+        // 「結局」寫「測試」的是設定時的測試資料，不算進全班結果
+        const rows = demo ? demoRows() : parseSheet(await loadSheet(id)).filter((r) => r.ending !== '測試');
         lastResults = [rows, { demo, time: new Date() }];
         if (box.isConnected) box.innerHTML = resultsHTML(...lastResults);
       } catch (err) {
