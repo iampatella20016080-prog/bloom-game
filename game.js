@@ -879,7 +879,7 @@
     S.demo = true;
     S.day = 180;
     S.hours = { me: 128, partner: 22, mil: 14 };
-    S.flags = { hideMood: 1, 'right:mascot': 6, 'right:mil': 2, 'left:mascot': 5, talk: 1, negotiate: 1 };
+    S.flags = { hideMood: 1, 'right:mascot': 6, 'right:mil': 2, 'left:mascot': 7, talk: 1, negotiate: 1 };
     S.record = { tetris: { sleep: 3 }, whack: { money: '8,960', help: 1 }, gaze: { covered: 7 } };
     S.crashes = Array.from({ length: id === 'crash' ? 3 : 1 }, () => ({ stat: 'mood', side: 'low', day: 0 }));
     S.stats = { mood: 12, baby: 48, family: 52, bmi: id === 'reach' ? 40 : 58 };
