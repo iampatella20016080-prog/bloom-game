@@ -89,8 +89,7 @@ window.BLOOM_DATA = {
       no: '第 1 章',
       title: '第 1 週・坐月子',
       background: [
-        '台灣習俗「坐月子」：產後大約一個月，在家或在月子中心休養、進補。',
-        '這段時間的照顧，大多落在婆婆、娘家媽媽，或付費的月子中心身上。',
+        '台灣習俗「坐月子」：產後約一個月休養、進補，照顧多半落在婆婆、娘家媽媽或付費的月子中心身上。',
         '同一時間，你手機裡的身材管理 App 已經開始倒數。',
       ],
       boss: 'nightFeed',
@@ -104,7 +103,7 @@ window.BLOOM_DATA = {
           theory: '鄭斐文：BMI 是人口治理技術',
         },
         {
-          who: 'mil', day: 2,
+          who: 'mil', day: 2, extra: true,
           text: '麻油雞煮好了。坐月子就是要補，這一碗全部喝完！',
           left:  { label: '我喝不下', effects: { family: -10, bmi: -2 },
                    reply: { who: 'mil', text: '我當年坐月子，一天吃五餐欸。' } },
@@ -197,9 +196,9 @@ window.BLOOM_DATA = {
                    hours: { me: 2, mil: 1 }, flags: { covered: 1 } },
           theory: '高夫曼：掩飾（covering）',
         },
-        // 支線：拒絕婆婆兩次以上
+        // 支線：拒絕過婆婆
         {
-          who: 'partner', day: 19, when: { 'left:mil': 2 },
+          who: 'partner', day: 19, when: { 'left:mil': 1 },
           text: '我媽打給我，說你都不聽她的……她在電話裡哭了。',
           left:  { label: '她說的不一定對', effects: { family: -10, mood: 2 },
                    reply: { who: 'partner', text: '你就不能讓一下嗎？' } },
@@ -223,7 +222,7 @@ window.BLOOM_DATA = {
           theory: '鄭斐文：科學母職',
         },
         {
-          who: 'partner', day: 24, extra: true, unless: { 'left:mil': 2 },
+          who: 'partner', day: 24, extra: true, unless: { 'left:mil': 1 },
           text: '我媽說你最近臉色很臭……你可以對她好一點嗎？',
           left:  { label: '是你媽一直管我', effects: { family: -10, mood: 4 },
                    reply: { who: 'partner', text: '她也是好意啊……' } },
@@ -243,9 +242,8 @@ window.BLOOM_DATA = {
       no: '第 2 章',
       title: '第 2 個月・產假倒數',
       background: [
-        '滿月了。坐月子結束，婆婆準備回南部。',
-        '台灣的產假是 8 週。第 57 天，你要決定：回去上班、請育嬰留停，還是離職。',
-        '在台灣，已婚婦女有 22.7% 曾因生育離職；離職的人平均隔了 4 年 5 個月才回到職場（衛福部調查，2019）。',
+        '滿月了，婆婆回南部。台灣的產假只有 8 週，第 57 天你要決定：回去上班、請育嬰留停，還是離職。',
+        '已婚婦女有 22.7% 曾因生育離職，離職的人平均隔了 4 年 5 個月才回到職場（衛福部調查，2019）。',
       ],
       boss: 'tetris',
       cards: [
@@ -348,7 +346,7 @@ window.BLOOM_DATA = {
           theory: '上野：市場吃掉自己的外部（10.2）',
         },
         {
-          who: 'mascot', day: 47,
+          who: 'mascot', day: 47, extra: true,
           text: '今日運動目標：60 分鐘 🏃‍♀️ 你已經連續 14 天沒達標了。',
           left:  { label: '我連睡覺的時間都沒有', effects: { mood: 2, bmi: 2 },
                    reply: { who: 'mascot', text: '時間是擠出來的喔！成功的媽媽都 5 點起床 ☀️' } },
@@ -378,8 +376,7 @@ window.BLOOM_DATA = {
       no: '第 3 章',
       title: '第 3 個月・回到人群',
       background: [
-        '第 3 個月。你要回到人群裡了：同事、親戚、鄰居。',
-        '產後的身體很難藏：肚子、哺乳、黑眼圈，都會被看見。',
+        '第 3 個月，你要回到人群裡了。肚子、哺乳、黑眼圈，都會被看見。',
         '法律保障你在公共場所哺乳，但飯桌上的眼光，沒有法律管。',
       ],
       boss: 'gaze',
@@ -441,7 +438,7 @@ window.BLOOM_DATA = {
           theory: '高夫曼：聲望象徵與污名象徵（p.53–58）',
         },
         {
-          who: 'mascot', day: 68,
+          who: 'mascot', day: 68, extra: true,
           text: '出門小提醒 👗 深色衣服、高腰褲最顯瘦！要不要看「產後遮肚穿搭」？',
           left:  { label: '穿我想穿的', effects: { mood: 3 } },
           right: { label: '看看', effects: { mood: -3 }, flags: { covered: 1 },
@@ -502,7 +499,6 @@ window.BLOOM_DATA = {
       background: [
         '距離 App 的「180 天」只剩兩個月，推播越來越多。',
         '2023 年的健康媒體還在說：產後「應好好把握產後6個月的黃金期」。',
-        '照顧、瘦身、休息，每一件事都有人想賣你一個方案。',
       ],
       boss: 'whack',
       pushes: { chance: 0.35, max: 3 }, // 推播干擾：每張卡之後有多少機率跳出推播、這章最多幾次
@@ -603,7 +599,7 @@ window.BLOOM_DATA = {
           theory: '上野：再生產勞動不是本能，要重新分配',
         },
         {
-          who: 'mascot', day: 175,
+          who: 'mascot', day: 175, extra: true,
           text: '倒數 5 天 ⏳ 你的 {bmiStatus}。最後的機會，千萬別放棄！',
           left:  { label: '我想先休息', effects: { mood: 3, bmi: 1 },
                    reply: { who: 'mascot', text: '休息是給有達標的人喔 🌸' } },
@@ -619,7 +615,7 @@ window.BLOOM_DATA = {
       no: 'BOSS',
       title: '夜奶節奏戰',
       theme: 'night',
-      seconds: 22, // 22 秒＝晚上 11 點到早上 6 點
+      seconds: 18, // 18 秒＝晚上 11 點到早上 6 點
       rules: [
         '晚上 11 點到早上 6 點。',
         '寶寶一哭，就點寶寶。光圈縮到最小時點，是「完美安撫」，比較不傷睡眠。',
@@ -647,7 +643,7 @@ window.BLOOM_DATA = {
       feedCells: [0, 3, 6, 9, 12, 15, 18, 21],
       partnerCells: [0, 3], // 協商過夜奶輪流：這兩餐伴侶負責，格子空出來
       partnerName: '伴侶接手的夜奶',
-      pieceSeconds: 5,
+      pieceSeconds: 4,
       kinds: {
         feed:     { icon: '🍼', name: '餵奶' },
         care:     { icon: '🧺', name: '照顧與家事' },
@@ -662,8 +658,7 @@ window.BLOOM_DATA = {
         { label: '運動 60 分鐘', sub: '＋換衣服、洗澡、找人顧寶寶', kind: 'exercise', optional: true,
           shape: [[1, 1, 0], [0, 1, 1]] },
         { label: '兒科回診', kind: 'care', shape: [[1, 1]] },
-        { label: '換尿布', kind: 'care', shape: [[1]] },
-        { label: '擠奶', kind: 'care', shape: [[1]] },
+        { label: '換尿布、擠奶', kind: 'care', shape: [[1]] },
       ],
       placed: { sleep: '睡了 3 小時 💤', exercise: '運動塞進去了！' },
       noFit: '塞不進去……轉轉看？',
@@ -690,7 +685,7 @@ window.BLOOM_DATA = {
         '視線一亮，就在 1.6 秒內選一種方式擋：外套、抱寶寶、縮小腹。',
         '每擋一次都會用掉呼吸，呼吸用完就再也擋不住了。不擋，就會被看見。',
       ],
-      seconds: 20,
+      seconds: 16,
       window: 1600,
       covers: [
         { icon: '🧥', label: '外套遮住', cost: 8 },
@@ -727,7 +722,7 @@ window.BLOOM_DATA = {
         '沒關掉的推播會自動扣款。',
         '仔細看：有些訊息不是廣告。',
       ],
-      seconds: 20,
+      seconds: 16,
       slots: 9,
       life: [1600, 950], // 推播停留多久（毫秒）：從 1.6 秒越來越短
       gap: [650, 300],   // 多久冒出一個：越來越快
@@ -879,18 +874,17 @@ window.BLOOM_DATA = {
       // {money} 會換成這位玩家在推播打地鼠被扣的錢
       lines: [
         '商業模式：讓用戶相信「180 天」是身體的期限',
-        '核心指標：只給用戶看 BMI；精神、睡眠、照顧分工一律隱藏',
         '用戶焦慮 ↑ → 付費轉換率 ↑',
         '本用戶在最後衝刺被扣款：NT${money}',
-        '成長策略：把「正常」的 BMI 再往下修，就會多出一批新客群',
-        '成功案例：台灣曾把「正常」上限從 25 下修到 24，27 以上算肥胖（鄭斐文 2012：28–29）',
+        '成長策略：把「正常」的 BMI 往下修，就會多出一批新客群。台灣就曾把正常上限從 25 下修到 24（鄭斐文 2012：28–29）',
         '合作夥伴：減重藥廠、門診、代餐、塑身衣，也就是「健康工業集團」（鄭斐文 2012：39）',
         '不在我們指標裡的：睡眠、照顧分工、托育、哺集乳室、有沒有人可以說話',
       ],
       note: 'BLOOM 是虛構的 App；標了出處的才是真實資料。',
       button: '關掉後台',
     },
-    hiddenRefuse: 5,   // 拒絕 App 幾次以上，才可能觸發隱藏結局
+    // 2026-10-24 平衡測試（模擬 4000 場、精簡版）：一般玩家（6 成接受）約 隱藏 8%・達標 36%・崩潰 33%・失敗 24%
+    hiddenRefuse: 7,   // 拒絕 App 幾次以上，才可能觸發隱藏結局
     crashThreshold: 3, // 崩潰幾次以上算「崩潰結局」
   },
 

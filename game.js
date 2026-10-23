@@ -28,6 +28,78 @@
   let presenter = false; // 報告者模式（網址加 ?menu）
   let runId = 0;         // 每次重新開始就 +1，讓還在跑的 Boss 停下來
   let full = false;      // 完整版（網址加 ?full）：顯示標了 extra 的卡片、Boss 的每一張理論卡
+  let stage = 0;         // 可愛逐漸崩壞：0～3 是第幾章，4 是 App 當機
+
+  // ---------- 音效（用 Web Audio 即時合成，不需要音檔） ----------
+  const Sound = (() => {
+    let ctx = null;
+    let on = true;
+    try { on = localStorage.getItem('bloom-sound') !== 'off'; } catch { /* 無痕模式讀不到就用預設 */ }
+    const ready = () => {
+      if (!on) return null;
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    };
+    function tone(freq, dur, { type = 'sine', vol = 0.06, at = 0, slide = 0 } = {}) {
+      const c = ready();
+      if (!c) return;
+      const t = c.currentTime + at;
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(c.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    }
+    function noise(dur, { vol = 0.04, at = 0, cutoff = 1500 } = {}) {
+      const c = ready();
+      if (!c) return;
+      const buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      src.buffer = buf;
+      f.type = 'lowpass';
+      f.frequency.value = cutoff;
+      g.gain.value = vol;
+      src.connect(f).connect(g).connect(c.destination);
+      src.start(c.currentTime + at);
+    }
+    const sfx = {
+      tap: () => tone(660, 0.06, { type: 'triangle', vol: 0.04 }),
+      swipe: () => noise(0.14, { vol: 0.04, cutoff: 1800 }),
+      push: () => { tone(880, 0.12); tone(1320, 0.18, { at: 0.11 }); },
+      coin: () => { tone(988, 0.07, { type: 'square', vol: 0.03 }); tone(1319, 0.22, { type: 'square', vol: 0.03, at: 0.07 }); },
+      cry: () => tone(620, 0.32, { type: 'triangle', vol: 0.045, slide: 180 }),
+      good: () => { tone(784, 0.1); tone(1047, 0.16, { at: 0.09 }); },
+      bad: () => tone(196, 0.18, { type: 'sawtooth', vol: 0.035, slide: -60 }),
+      flip: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, { vol: 0.04, at: i * 0.06 })),
+      crash: () => { tone(330, 0.5, { type: 'sawtooth', vol: 0.04, slide: -250 }); noise(0.45, { vol: 0.05, cutoff: 900 }); },
+      glitch: () => {
+        for (let i = 0; i < 6; i++) tone(200 + Math.random() * 900, 0.05, { type: 'square', vol: 0.025, at: i * 0.06 });
+        noise(0.4, { vol: 0.04, cutoff: 3000, at: 0.1 });
+      },
+    };
+    return {
+      play(name) { try { sfx[name]?.(); } catch { /* 不支援 Web Audio 的瀏覽器就安靜 */ } },
+      get on() { return on; },
+      toggle() {
+        on = !on;
+        try { localStorage.setItem('bloom-sound', on ? 'on' : 'off'); } catch { /* 略過 */ }
+        if (on) ready();
+        return on;
+      },
+    };
+  })();
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -59,20 +131,41 @@
     el.cracks.innerHTML = '';
     el.push.classList.remove('show');
     hideReply();
+    setStage(ch);
     renderStats();
   }
 
-  // ---------- 小綻 ----------
-  function flowerSVG() {
+  // ---------- 小綻：表情隨章節崩壞 ----------
+  const FACES = [
+    { eye: 2.8, mouth: 'M43 55 Q50 62 57 55', blush: true },  // 第 1 章：開心
+    { eye: 2.8, mouth: 'M44 56 Q50 60 56 56', blush: true },  // 第 2 章：笑容變小
+    { eye: 2.6, mouth: 'M44 57 L56 57' },                     // 第 3 章：笑不出來
+    { eye: 3.8, mouth: 'M40 53 Q50 66 60 53 Z', grin: true }, // 第 4 章：僵硬的大笑
+    { dead: true, mouth: 'M41 58 L45.5 54.5 L50 58 L54.5 54.5 L59 58' }, // App 當機
+  ];
+  function flowerSVG(face = stage) {
+    const f = FACES[clamp(face, 0, FACES.length - 1)];
     const petals = [0, 72, 144, 216, 288]
       .map((a) => `<ellipse cx="50" cy="23" rx="17" ry="22" transform="rotate(${a} 50 50)"/>`).join('');
+    const eyes = f.dead
+      ? '<path d="M39 44 L45 50 M45 44 L39 50 M55 44 L61 50 M61 44 L55 50" class="mouth"/>'
+      : `<circle cx="42" cy="47" r="${f.eye}" class="eye"/><circle cx="58" cy="47" r="${f.eye}" class="eye"/>
+        ${f.grin ? '<circle cx="42.8" cy="46.2" r="1" class="pupil"/><circle cx="58.8" cy="46.2" r="1" class="pupil"/>' : ''}`;
     return `<svg viewBox="0 0 100 100" class="flower" aria-hidden="true">
       <g class="petals">${petals}</g>
       <circle cx="50" cy="50" r="21" class="core"/>
-      <circle cx="42" cy="47" r="2.8" class="eye"/><circle cx="58" cy="47" r="2.8" class="eye"/>
-      <circle cx="37" cy="55" r="3.5" class="blush"/><circle cx="63" cy="55" r="3.5" class="blush"/>
-      <path d="M43 55 Q50 62 57 55" class="mouth"/>
+      ${eyes}
+      ${f.blush ? '<circle cx="37" cy="55" r="3.5" class="blush"/><circle cx="63" cy="55" r="3.5" class="blush"/>' : ''}
+      <path d="${f.mouth}" class="mouth${f.grin ? ' grin' : ''}"/>
+      ${f.grin ? '<path d="M43 58.5 L57 58.5" class="mouth thin"/>' : ''}
     </svg>`;
+  }
+
+  // 換章節時：畫面越來越飽和、越來越不對勁，小綻的表情也跟著變
+  function setStage(n) {
+    stage = n;
+    el.phone.dataset.stage = n;
+    $('#brandFlower').innerHTML = flowerSVG();
   }
   const avatarHTML = (who) => (who.avatar === 'flower' ? flowerSVG() : esc(who.avatar));
 
@@ -165,6 +258,7 @@
 
   function crashScreen(c) {
     hideReply();
+    Sound.play('crash');
     return new Promise((resolve) => {
       actions.crashGoOn = () => { hideScreen(); resolve(); };
       screen(`
@@ -280,6 +374,7 @@
     if (S.busy) return;
     S.busy = true;
     preview(null);
+    Sound.play('swipe');
     const c = currentCard();
     const opt = c[side];
     el.card.dataset.side = side;
@@ -326,6 +421,7 @@
       <button class="push-body" data-push="open">${flowerSVG()}<span><b>BLOOM・現在</b>${esc(text)}</span></button>
       <button class="push-close" data-push="close" aria-label="關閉推播">✕</button>`;
     el.push.classList.add('show');
+    Sound.play('push');
   }
   el.push.addEventListener('click', (e) => {
     const b = e.target.closest('[data-push]');
@@ -334,6 +430,7 @@
       applyEffects({ bmi: -1, mood: -1 });
       showReply({ who: 'mascot', text: D.pushOpened });
     }
+    Sound.play('tap');
     el.push.classList.remove('show');
     S.busy = false;
   });
@@ -397,7 +494,10 @@
   }
   el.overlay.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
-    if (b && actions[b.dataset.act]) actions[b.dataset.act](b.dataset);
+    if (b && actions[b.dataset.act]) {
+      if (b.dataset.act !== 'flipTheory') Sound.play('tap');
+      actions[b.dataset.act](b.dataset);
+    }
   });
 
   actions.splash = () => screen(`
@@ -438,6 +538,7 @@
   };
 
   actions.chapterTitle = () => {
+    setStage(S.ch);
     const ch = chapter();
     screen(`
       <div class="chapter-no">${esc(ch.no)}</div>
@@ -466,30 +567,35 @@
       S.record[bossId] = result.vars;
       addHours(result.hours);
       applyEffects(result.effects);
-      await resultScreen(cfg, result);
-      // 精簡版只翻第一張，其他直接收進圖鑑；完整版每一張都翻
+      // 結算和第一張理論卡放在同一個畫面（省時間）。精簡版的其他理論卡直接收進圖鑑，完整版再一張一張翻
       const ids = [].concat(cfg.theory || []);
-      if (full) for (const id of ids) await theoryScreen(id);
-      else if (ids.length) await theoryScreen(ids[0], ids.slice(1));
+      if (!ids.length) await resultScreen(cfg, result);
+      else {
+        await theoryScreen(ids[0], full ? [] : ids.slice(1), { cfg, result });
+        if (full) for (const id of ids.slice(1)) await theoryScreen(id);
+      }
       await resolveCrashes();
     }
     if (S.ch + 1 >= D.chapters.length) return finale(); // 最後一章打完 → 結局
     chapterEnd();
   }
 
+  const fxTextOf = (fx) => KEYS.filter((k) => fx[k])
+    .map((k) => (k === 'mood' && moodHidden() ? `${ICON[k]} 🔒` : `${ICON[k]} ${fx[k] > 0 ? '+' : ''}${fx[k]}`))
+    .join('　');
+
+  // Boss 結算的內容（單獨一個畫面，或放在理論卡上方）
+  const bossResultHTML = (cfg, result, compact) => `
+    <div class="chapter-no">${esc(cfg.no)} 結束${compact ? `・${esc(cfg.title)}` : ''}</div>
+    ${compact ? '' : `<div class="chapter-title">${esc(cfg.title)}</div>`}
+    <p class="end-text${compact ? ' small' : ''}">${esc(result.text)}</p>
+    <div class="summary">${fxTextOf(result.effects)}</div>
+    ${result.app ? `<div class="app-push">${flowerSVG()}<div><b>BLOOM</b><br>${esc(result.app)}</div></div>` : ''}`;
+
   function resultScreen(cfg, result) {
     return new Promise((resolve) => {
       actions.resultGoOn = () => resolve();
-      const fx = result.effects;
-      const fxText = KEYS.filter((k) => fx[k])
-        .map((k) => (k === 'mood' && moodHidden() ? `${ICON[k]} 🔒` : `${ICON[k]} ${fx[k] > 0 ? '+' : ''}${fx[k]}`))
-        .join('　');
-      screen(`
-        <div class="chapter-no">${esc(cfg.no)} 結束</div>
-        <div class="chapter-title">${esc(cfg.title)}</div>
-        <p class="end-text">${esc(result.text)}</p>
-        <div class="summary">${fxText}</div>
-        ${result.app ? `<div class="app-push">${flowerSVG()}<div><b>BLOOM</b><br>${esc(result.app)}</div></div>` : ''}
+      screen(`${bossResultHTML(cfg, result, false)}
         <button class="btn" data-act="resultGoOn">繼續</button>`, cfg.theme || 'night');
     });
   }
@@ -505,7 +611,7 @@
       <span class="tc-plain"><b>一句話</b>${esc(t.plain)}</span>`;
   }
 
-  function theoryScreen(id, also = []) {
+  function theoryScreen(id, also = [], boss = null) {
     const t = D.theories[id];
     for (const x of [id, ...also]) if (!S.theories.includes(x)) S.theories.push(x);
     const alsoHTML = also.length
@@ -513,15 +619,19 @@
       : '';
     return new Promise((resolve) => {
       actions.theoryGoOn = () => { hideScreen(); resolve(); };
-      actions.flipTheory = () => $('#theoryCard').classList.add('flipped');
+      actions.flipTheory = () => {
+        $('#theoryCard').classList.add('flipped');
+        Sound.play('flip');
+      };
       screen(`
+        ${boss ? bossResultHTML(boss.cfg, boss.result, true) : ''}
         <div class="chapter-no">獲得理論卡</div>
         <button class="theory-card" id="theoryCard" data-act="flipTheory" aria-label="翻開理論卡">
           <span class="tc-face tc-back">${flowerSVG()}<span>點一下翻開</span></span>
           <span class="tc-face tc-front">${theoryFrontHTML(t, S.last)}</span>
         </button>
         ${alsoHTML}
-        <button class="btn" data-act="theoryGoOn">收進圖鑑</button>`);
+        <button class="btn" data-act="theoryGoOn">收進圖鑑</button>`, boss ? `${boss.cfg.theme || 'night'} scroll` : '');
     });
   }
 
@@ -623,6 +733,8 @@
     el.day.textContent = `產後第 ${S.day} 天`;
 
     // 1. App 當機
+    setStage(4);
+    Sound.play('glitch');
     const c = D.finale.crash;
     await step(`
       <div class="glitch-flower">${flowerSVG()}</div>
@@ -664,7 +776,9 @@
     S.metrics = await rewritePick();
     if (!alive()) return;
     S.flags.hideMood = 0;
+    setStage(0); // App 被重寫了：畫面恢復正常
     renderStats();
+    Sound.play('good');
     const R = D.rewrite;
     const nv = finaleVars();
     await step(`
@@ -677,10 +791,13 @@
       }).join('')}</div>
       <div class="viewpoint"><b>${esc(R.viewpointTitle)}</b>${R.viewpoint.map((v) => `<p>${esc(v)}</p>`).join('')}
         <blockquote>${esc(R.quote)}<cite>${esc(R.quoteSource)}</cite></blockquote></div>
+      ${R.theory && !full ? `<p class="note">也收進圖鑑：${esc(`${D.theories[R.theory].author}〈${D.theories[R.theory].concept}〉`)}</p>` : ''}
       <button class="btn" data-act="finaleNext">繼續</button>`, 'scroll');
     if (!alive()) return;
+    // 精簡版直接收進圖鑑（引文已經在上面的觀點裡）；完整版再翻一張
     S.last = nv;
-    if (R.theory) await theoryScreen(R.theory);
+    if (R.theory && !S.theories.includes(R.theory)) S.theories.push(R.theory);
+    if (R.theory && full) await theoryScreen(R.theory);
     if (!alive()) return;
 
     // 5. 結局分享卡（全班數據在這裡送出，才包含新指標）
@@ -933,6 +1050,7 @@
         if (isPerfect) perfect++;
         sleep -= isPerfect ? 7 : 12;
         face.textContent = '🍼';
+        Sound.play(isPerfect ? 'good' : 'tap');
         say(isPerfect ? '完美安撫！' : '安撫中……');
       });
 
@@ -958,6 +1076,7 @@
           } else {
             face.textContent = '😭';
             baby.classList.add('crying');
+            Sound.play('cry');
           }
         }
 
@@ -1145,10 +1264,12 @@
           b.classList.remove('bad');
           void b.offsetWidth;
           b.classList.add('bad');
+          Sound.play('bad');
           return say(cur.kind === 'exercise' ? cfg.noFit : '這裡放不下');
         }
         const kind = cur.kind;
         place(list, kind);
+        Sound.play(kind === 'care' ? 'tap' : 'good');
         if (kind === 'exercise') exercised = true;
         settle(cfg.placed[kind] || '');
       });
@@ -1170,6 +1291,7 @@
           return settle(`${p.label}：時間到，自動塞進去了`);
         }
         overflow++;
+        Sound.play('bad');
         settle(`${p.label}：塞不下，變成「做不完」`);
       }
 
@@ -1270,6 +1392,7 @@
         breath = Math.max(0, breath - c.cost);
         me.textContent = c.icon;
         guests[active.g].classList.add('blocked');
+        Sound.play('tap');
         say(`${c.label}，${cfg.blocked}`);
         if (breath <= 0) {
           btns.forEach((x) => { x.disabled = true; });
@@ -1282,6 +1405,7 @@
         if (!ev.by) {
           seen++;
           me.textContent = '😣';
+          Sound.play('bad');
           say(`${cfg.seenMsg}：「${ev.say}」`);
         }
         setTimeout(() => {
@@ -1366,6 +1490,7 @@
 
       function charge(item) {
         charged++;
+        Sound.play('coin');
         money += item.price;
         moneyEl.innerHTML = `已扣款 <b>NT$${fmt(money)}</b>`;
         moneyEl.classList.remove('pop');
@@ -1405,9 +1530,11 @@
         if (!pop) return;
         if (pop.kind === 'friend') {
           help++;
+          Sound.play('good');
           say(cfg.friendYes);
         } else if (b.dataset.k === 'x') {
           closed++;
+          Sound.play('tap');
         } else {
           charge(pop.item);
           say(cfg.boughtMsg);
@@ -1667,6 +1794,17 @@
   //   ?timer    右上角顯示碼表，彩排時計時用
   //   ?finale=hidden|reach|crash|fail  直接看某一種結局（用示範數字，不送全班數據）
   $('#brandFlower').innerHTML = flowerSVG();
+  const soundBtn = $('#soundBtn');
+  const paintSound = () => {
+    soundBtn.textContent = Sound.on ? '🔊' : '🔇';
+    soundBtn.setAttribute('aria-pressed', String(Sound.on));
+  };
+  soundBtn.addEventListener('click', () => {
+    Sound.toggle();
+    paintSound();
+    Sound.play('tap');
+  });
+  paintSound();
   const q = new URLSearchParams(location.search);
   const chOf = (v) => clamp((parseInt(v, 10) || 1) - 1, 0, D.chapters.length - 1);
   full = q.has('full');

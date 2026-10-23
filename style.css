@@ -502,7 +502,6 @@ button { font: inherit; color: inherit; }
 /* ---------- 結局：App 當機 ---------- */
 .overlay.crashed { background: #0b0b0f; }
 .glitch-flower .flower { width: 120px; height: 120px; animation: jitter .18s steps(2) infinite; filter: hue-rotate(160deg) saturate(2.5); }
-.glitch-flower .mouth { d: path("M43 57 L57 57"); }
 @keyframes jitter { 50% { transform: translate(3px, -2px) skewX(6deg); } }
 .glitch { position: relative; animation: glitch 1.2s infinite steps(1); }
 @keyframes glitch {
@@ -586,6 +585,10 @@ button { font: inherit; color: inherit; }
 .share-stats { list-style: none; margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 .share-stats li { padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, .2); font-size: 13px; }
 
+/* Boss 結算放在理論卡上方時 */
+.end-text.small { font-size: 14px; line-height: 1.6; }
+.overlay.night .note, .overlay.dusk .note, .overlay.neon .note, .overlay.dark .note { color: #e2d2dc; }
+
 /* 圖鑑裡還沒收集的卡 */
 .deck-card.locked { background: repeating-linear-gradient(45deg, #f4e6ec 0 6px, #fbf2f6 6px 12px); box-shadow: none; color: var(--ink-soft); cursor: default; }
 .menu-label { margin-top: 8px; font-size: 12px; color: var(--ink-soft); text-align: left; }
@@ -654,11 +657,50 @@ button { font: inherit; color: inherit; }
 .tc-exp b, .tc-plain b { display: block; font-size: 11px; color: var(--ink-soft); }
 
 /* ---------- 小綻 ---------- */
-.flower .petals { fill: #ff9ec4; }
+.flower .petals { fill: #ff9ec4; transition: fill 1.2s; }
 .flower .core { fill: #ffd86b; }
 .flower .eye { fill: #5a2a3a; }
+.flower .pupil { fill: #fff; }
 .flower .blush { fill: #ff7aa8; opacity: .55; }
-.flower .mouth { fill: none; stroke: #5a2a3a; stroke-width: 2.6; stroke-linecap: round; }
+.flower .mouth { fill: none; stroke: #5a2a3a; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.flower .mouth.grin { fill: #fff; }
+.flower .mouth.thin { stroke-width: 1.2; }
+
+/* 頂欄右側：天數＋音效開關 */
+.appbar-right { display: flex; align-items: center; gap: 6px; }
+.sound-btn {
+  width: 32px; height: 32px; border: 0; border-radius: 50%; cursor: pointer;
+  background: var(--pink-soft); font-size: 15px; line-height: 32px;
+}
+
+/* ---------- 可愛逐漸崩壞：每一章 App 越來越飽和、越來越不對勁 ---------- */
+.phone { transition: filter 1.2s; }
+.phone::after {
+  content: ""; position: absolute; inset: 0; z-index: 44; pointer-events: none; opacity: 0;
+  background: repeating-linear-gradient(0deg, rgba(40, 0, 20, .09) 0 1px, transparent 1px 3px);
+  transition: opacity 1.2s;
+}
+.phone[data-stage="1"] { filter: saturate(1.15); }
+.phone[data-stage="2"] { filter: saturate(1.35) hue-rotate(-6deg); }
+.phone[data-stage="2"]::after { opacity: .35; }
+.phone[data-stage="3"] { filter: saturate(1.7) hue-rotate(-12deg) contrast(1.06); }
+.phone[data-stage="3"]::after { opacity: .7; animation: scan 6s linear infinite; }
+.phone[data-stage="4"]::after { opacity: 1; animation: scan 1.5s linear infinite; }
+@keyframes scan { to { background-position: 0 60px; } }
+.phone[data-stage="3"] .flower .petals { fill: #ff4f93; }
+.phone[data-stage="2"] .bmi-panel { animation: glitch-soft 7s infinite steps(1); }
+.phone[data-stage="3"] .bmi-panel { animation: glitch-soft 3.5s infinite steps(1); }
+@keyframes glitch-soft {
+  0%, 100% { transform: none; }
+  91% { transform: translate(2px, -1px) skewX(-3deg); }
+  93% { transform: translate(-3px, 1px); }
+  95% { transform: none; }
+}
+.phone[data-stage="3"] .avatar .flower, .phone[data-stage="3"] .brand-flower .flower { animation: twitch 2.4s infinite steps(1); }
+@keyframes twitch { 0%, 100% { transform: none; } 88% { transform: rotate(-8deg) scale(1.05); } 90% { transform: rotate(6deg); } 92% { transform: none; } }
+/* 數值變化的閃動要蓋過上面的抖動 */
+.phone[data-stage] .bmi-panel.down { animation: glow .8s; }
+.phone[data-stage] .bmi-panel.up { animation: shake .45s; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition-duration: .01s !important; }
