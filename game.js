@@ -29,12 +29,13 @@
   let runId = 0;         // 每次重新開始就 +1，讓還在跑的 Boss 停下來
   let full = false;      // 完整版（網址加 ?full）：顯示標了 extra 的卡片、Boss 的每一張理論卡
   let stage = 0;         // 可愛逐漸崩壞：0～3 是第幾章，4 是 App 當機
+  let paintSound = () => {}; // 啟動時才接上頂欄的音效按鈕
 
   // ---------- 音效（用 Web Audio 即時合成，不需要音檔） ----------
   const Sound = (() => {
     let ctx = null;
-    let on = true;
-    try { on = localStorage.getItem('bloom-sound') !== 'off'; } catch { /* 無痕模式讀不到就用預設 */ }
+    let on = false; // 預設關閉：全班一起玩時才不會此起彼落
+    try { on = localStorage.getItem('bloom-sound') === 'on'; } catch { /* 無痕模式讀不到就用預設 */ }
     const ready = () => {
       if (!on) return null;
       if (!ctx) {
@@ -317,7 +318,8 @@
 
     const labels = `
       <div class="choice-label left">${esc(c.left.label)}</div>
-      <div class="choice-label right">${esc(c.right.label)}</div>`;
+      <div class="choice-label right">${esc(c.right.label)}</div>
+      <div class="card-day">第 ${S.day} 天</div>`;
     const hint = '<div class="hint">← 左滑拒絕・右滑接受 →</div>';
     if (c.type === 'article') {
       // App 推薦文章（台灣案例）
@@ -505,8 +507,18 @@
     <div class="title-big">綻放 <b>BLOOM</b></div>
     <div class="slogan">${esc(D.intro.appSlogan)}</div>
     <button class="btn" data-act="register">開始使用</button>
+    <button class="btn ghost sound-toggle" data-act="toggleSound">${esc(Sound.on ? D.intro.soundOff : D.intro.soundOn)}</button>
     <p class="content-note">${esc(D.intro.contentNote)}</p>
+    <p class="content-note">${esc(D.intro.fictionNote)}</p>
     ${classForm() ? `<p class="content-note">${esc(D.intro.privacyNote)}</p>` : ''}`);
+
+  actions.toggleSound = () => {
+    Sound.toggle();
+    paintSound();
+    Sound.play('good');
+    const b = document.querySelector('.sound-toggle');
+    if (b) b.textContent = Sound.on ? D.intro.soundOff : D.intro.soundOn;
+  };
 
   actions.register = () => screen(`
     <div class="mini-flower">${flowerSVG()}</div>
@@ -776,10 +788,17 @@
     S.metrics = await rewritePick();
     if (!alive()) return;
     S.flags.hideMood = 0;
-    setStage(0); // App 被重寫了：畫面恢復正常
+    const R = D.rewrite;
+    // 過場：App 被重寫了，畫面恢復正常（粉色回來、掃描線消失、小綻的笑容回來）
+    hideScreen();
+    setStage(0);
     renderStats();
     Sound.play('good');
-    const R = D.rewrite;
+    el.push.innerHTML = `<div class="push-body restored">${flowerSVG(0)}<span><b>BLOOM 2.0</b>${esc(R.restored.text)}</span></div>`;
+    el.push.classList.add('show');
+    await wait(2200);
+    if (!alive()) return;
+    el.push.classList.remove('show');
     const nv = finaleVars();
     await step(`
       <div class="chapter-no">BLOOM 2.0</div>
@@ -922,19 +941,29 @@
     const list = Object.entries(D.theories);
     const mine = !presenter && S.theories.length > 0;
     const have = (id) => !mine || S.theories.includes(id);
-    screen(`
-      <div class="chapter-no">理論卡圖鑑</div>
-      <div class="chapter-title">文獻討論</div>
-      <div class="deck">${list.map(([id, t]) => (have(id) ? `
+    // 依作者分組，順序照作者第一次出現
+    const groups = [];
+    for (const [id, t] of list) {
+      let g = groups.find((x) => x.author === t.author);
+      if (!g) groups.push((g = { author: t.author, cards: [] }));
+      g.cards.push([id, t]);
+    }
+    const cardHTML = ([id, t]) => (have(id) ? `
         <button class="deck-card" data-act="theoryDetail" data-id="${esc(id)}">
-          <span class="tc-author">${esc(t.author)}</span>
           <span class="deck-concept">${esc(t.concept)}</span>
           <span class="tc-source">${esc(t.source)}</span>
         </button>` : `
         <div class="deck-card locked" aria-label="還沒收集的理論卡">
-          <span class="tc-author">？？？</span>
           <span class="deck-concept">還沒收集</span>
-        </div>`)).join('')}</div>
+        </div>`);
+    screen(`
+      <div class="chapter-no">理論卡圖鑑</div>
+      <div class="chapter-title">文獻討論</div>
+      ${groups.map((g) => `
+        <div class="deck-group">
+          <div class="deck-author">${esc(g.author)}<span>${g.cards.filter(([id]) => have(id)).length}／${g.cards.length} 張</span></div>
+          <div class="deck">${g.cards.map(cardHTML).join('')}</div>
+        </div>`).join('')}
       <p class="note">${mine ? `你收集了 ${S.theories.length}／${list.length} 張。` : `一共 ${list.length} 張。每打完一個 Boss 會拿到一張。`}</p>
       ${presenter ? backToMenu()
         : S.ending ? '<button class="btn" data-act="shareBack">回到我的結局</button>'
@@ -1010,22 +1039,32 @@
       const partnerOn = sharing();
       const myRun = runId;
 
+      // 星空：固定亂數，每次一樣
+      let seed = 11;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const stars = Array.from({ length: 40 }, () => `<i style="left:${(rnd() * 100).toFixed(1)}%;top:${(rnd() * 55).toFixed(1)}%;--d:${(1.5 + rnd() * 3).toFixed(1)}s;--s:${(1 + rnd() * 2).toFixed(1)}px"></i>`).join('');
       screen(`
         <div class="nf">
+          <div class="nf-sky">${stars}<span class="nf-moon" id="nfMoon">🌙</span></div>
           <div class="nf-top"><span class="nf-clock" id="nfClock">23:00</span><span>${esc(cfg.title)}</span></div>
+          <div class="nf-night"><span>23:00</span><div class="bar"><i id="nfNight"></i></div><span>06:00</span></div>
           <div class="nf-sleep"><span>💤 睡眠</span><div class="bar"><i id="nfSleep"></i></div></div>
           <div class="nf-room">
-            <button class="nf-baby" id="nfBaby" aria-label="安撫寶寶">
-              <span class="nf-ring" id="nfRing"></span><span class="nf-face" id="nfFace">😴</span>
-            </button>
+            <div class="nf-crib">
+              <button class="nf-baby" id="nfBaby" aria-label="安撫寶寶">
+                <span class="nf-ring" id="nfRing"></span><span class="nf-face" id="nfFace">😴</span>
+              </button>
+              <div class="nf-crib-rail"></div>
+            </div>
             <div class="nf-msg" id="nfMsg" aria-live="polite"></div>
           </div>
-          <div class="nf-partner" id="nfPartner">🧑 ${partnerOn ? '在旁邊睡' : '在客房睡'} 💤</div>
+          <div class="nf-partner ${partnerOn ? 'near' : 'away'}" id="nfPartner"><b>🚪</b><span>🧑 ${esc(partnerOn ? cfg.partnerNear : cfg.partnerAway)} 💤</span></div>
           <div class="nf-push" id="nfPush">${esc(cfg.appPush)}</div>
         </div>`, 'night boss');
 
       const baby = $('#nfBaby'), ring = $('#nfRing'), face = $('#nfFace'), msg = $('#nfMsg');
       const sleepBar = $('#nfSleep'), clock = $('#nfClock'), push = $('#nfPush'), partner = $('#nfPartner');
+      const nightBar = $('#nfNight'), moon = $('#nfMoon');
 
       // 排好哭的時間
       const cries = [];
@@ -1060,6 +1099,9 @@
         const dt = now - last;
         last = now;
         clock.textContent = fmt(hourAt(Math.min(t, DURATION)));
+        const night = Math.min(1, t / DURATION);
+        nightBar.style.width = `${night * 100}%`;
+        moon.style.left = `${8 + night * 84}%`;
 
         // 開始哭
         const next = cries.find((c) => !c.started && t >= c.t && t < c.t + CRY);
@@ -1071,7 +1113,8 @@
             active.by = 'partner';
             partnerN++;
             face.textContent = '🍼';
-            partner.textContent = `🧑 ${cfg.partnerLine}`;
+            partner.querySelector('span').textContent = `🧑 ${cfg.partnerLine}`;
+            partner.classList.add('up');
             say('伴侶起來了');
           } else {
             face.textContent = '😭';
@@ -1102,7 +1145,7 @@
             baby.classList.remove('crying');
             face.textContent = '😴';
             ring.style.opacity = 0;
-            if (partnerOn) partner.textContent = '🧑 在旁邊睡 💤';
+            if (partnerOn) { partner.querySelector('span').textContent = `🧑 ${cfg.partnerNear} 💤`; partner.classList.remove('up'); }
           }
         } else {
           sleep += dt * 0.0022; // 沒人哭的時候慢慢睡回來一點
@@ -1360,7 +1403,10 @@
             <div class="gz-guests">${scene.guests.map((g) => `
               <div class="gz-guest"><span class="gz-say"></span><span class="gz-face">${g}</span><span class="gz-beam"></span></div>`).join('')}
             </div>
-            <div class="gz-dishes" aria-hidden="true">🍲 🥢 🍗 🍚</div>
+            <div class="gz-cloth" aria-hidden="true">
+              <div class="gz-dishes"><span>🍲</span><span>🥟</span><span>🍗</span><span>🥗</span><span>🍚</span></div>
+              <div class="gz-plates"><span></span><span></span><span></span><span></span></div>
+            </div>
             <div class="gz-me" id="gzMe">🙂</div>
           </div>
           <div class="gz-msg" id="gzMsg" aria-live="polite"></div>
@@ -1795,7 +1841,7 @@
   //   ?finale=hidden|reach|crash|fail  直接看某一種結局（用示範數字，不送全班數據）
   $('#brandFlower').innerHTML = flowerSVG();
   const soundBtn = $('#soundBtn');
-  const paintSound = () => {
+  paintSound = () => {
     soundBtn.textContent = Sound.on ? '🔊' : '🔇';
     soundBtn.setAttribute('aria-pressed', String(Sound.on));
   };
