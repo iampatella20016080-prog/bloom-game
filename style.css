@@ -394,6 +394,117 @@ button { font: inherit; color: inherit; }
 .tt-msg { min-height: 1.5em; text-align: center; font-weight: 700; color: var(--pink-deep); }
 .tt-msg.pop { animation: pop .4s; }
 
+/* ---------- App 3.0：精神條被藏起來 ---------- */
+.stat.locked { animation: none; opacity: .55; }
+.stat.locked .bar { background: repeating-linear-gradient(45deg, #e6d3dc 0 4px, #f3e6ec 4px 8px); }
+.stat.locked .bar i { visibility: hidden; }
+.stat.locked .lbl::after { content: " 🔒"; }
+
+/* ---------- Boss：聚餐視線閃躲 ---------- */
+.overlay.dusk { background: linear-gradient(180deg, #2b1b26, #4a2a38 60%, #5c3344); color: #fbeef3; }
+.overlay.dusk .btn { background: #ffb36b; color: #3a1f2b; box-shadow: none; }
+.overlay.dusk .bg-list li::before { background: #ffb36b; }
+.overlay.dusk .summary.small { color: #e5c9d5; }
+.gz { position: relative; flex: 1; width: 100%; display: flex; flex-direction: column; gap: 12px; padding: 44px 18px 26px; }
+.gz-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: #e5c9d5; }
+.gz-top b { font-size: 18px; color: #fff; }
+.gz-breath { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.gz-breath .bar { height: 10px; background: rgba(255, 255, 255, .15); }
+.gz-breath .bar i { width: 100%; background: linear-gradient(90deg, #ffb36b, #ffd9a8); transition: width .2s; }
+.gz-table {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 14px 8px 18px; border-radius: 24px; background: radial-gradient(ellipse at center, #7a4a3a, #4a2a2a 70%);
+}
+.gz-guests { width: 100%; display: flex; justify-content: space-around; }
+.gz-guest { position: relative; width: 64px; display: flex; flex-direction: column; align-items: center; }
+.gz-face { font-size: 38px; transition: transform .2s; }
+.gz-say {
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 130px;
+  padding: 5px 9px; border-radius: 10px; background: #fff; color: var(--ink); font-size: 12px; line-height: 1.4;
+  opacity: 0; transition: opacity .15s; pointer-events: none; z-index: 2;
+}
+.gz-guest:first-child .gz-say { left: 0; transform: none; }
+.gz-guest:last-child .gz-say { left: auto; right: 0; transform: none; }
+.gz-beam {
+  width: 46px; height: min(36vh, 280px); margin-top: -4px; clip-path: polygon(35% 0, 65% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, rgba(255, 240, 150, .85), rgba(255, 240, 150, 0)); opacity: 0; transition: opacity .15s;
+}
+.gz-guest.gazing .gz-say, .gz-guest.gazing .gz-beam { opacity: 1; }
+.gz-guest.gazing .gz-face { transform: scale(1.15); }
+.gz-guest.blocked .gz-beam { opacity: .25; }
+.gz-dishes { font-size: 26px; letter-spacing: 6px; opacity: .9; }
+.gz-me { font-size: 54px; }
+.gz-msg { min-height: 1.5em; text-align: center; font-weight: 700; color: #ffd9a8; }
+.gz-msg.pop { animation: pop .4s; }
+.gz-covers { display: flex; gap: 8px; }
+.gz-btn {
+  flex: 1; min-height: 64px; border: 0; border-radius: 16px; cursor: pointer; touch-action: manipulation;
+  background: #fff; color: var(--ink); font-size: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.gz-btn span { font-size: 12px; font-weight: 600; }
+.gz-btn:active { transform: scale(.96); }
+.gz-btn:disabled { opacity: .35; }
+
+/* ---------- 推播干擾（滑卡時蓋住卡片） ---------- */
+.push {
+  position: absolute; top: 24%; left: 12px; right: 12px; z-index: 33;
+  display: flex; align-items: stretch; gap: 6px;
+  transform: translateY(-30px); opacity: 0; pointer-events: none; transition: transform .3s, opacity .3s;
+}
+.push.show { transform: none; opacity: 1; pointer-events: auto; animation: buzz .5s .3s; }
+@keyframes buzz { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+.push-body {
+  flex: 1; display: flex; gap: 10px; align-items: center; text-align: left; padding: 12px 14px;
+  border: 0; border-radius: 18px; cursor: pointer; font-size: 14px; line-height: 1.45;
+  background: rgba(255, 255, 255, .97); box-shadow: 0 12px 30px rgba(60, 20, 40, .3);
+}
+.push-body .flower { width: 34px; height: 34px; flex: none; }
+.push-body b { display: block; font-size: 11px; color: var(--ink-soft); }
+.push-close {
+  width: 48px; border: 0; border-radius: 18px; cursor: pointer; font-size: 18px;
+  background: rgba(255, 255, 255, .97); box-shadow: 0 12px 30px rgba(60, 20, 40, .3);
+}
+
+/* ---------- Boss：推播打地鼠 ---------- */
+.overlay.neon { background: radial-gradient(circle at 50% 25%, #6d1747, #1d0a18 70%); color: #ffe3f0; }
+.overlay.neon .btn { background: #ff3d8b; color: #fff; box-shadow: 0 0 24px rgba(255, 61, 139, .6); }
+.overlay.neon .bg-list li::before { background: #ff3d8b; }
+.overlay.neon .app-push { color: #ffe3f0; }
+.wk { flex: 1; width: 100%; display: flex; flex-direction: column; gap: 12px; padding: 44px 16px 26px; }
+.wk-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: #f4b6d2; }
+.wk-top b { font-size: 18px; color: #fff; }
+.wk-money { text-align: center; font-size: 14px; }
+.wk-money b { font-size: 26px; color: #ff6fae; }
+.wk-money.pop { animation: pop .35s; }
+.wk-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 10px; }
+.wk-slot { position: relative; min-height: 0; border-radius: 22px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.wk-pop { position: absolute; inset: 0; border-radius: 22px; animation: popin .18s ease-out; }
+@keyframes popin { from { transform: scale(.6); opacity: 0; } }
+.wk-pop.ad { background: #fff; color: var(--ink); box-shadow: 0 0 18px rgba(255, 61, 139, .5); }
+.wk-buy {
+  position: absolute; inset: 0; width: 100%; border: 0; border-radius: 22px; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 18px 8px 8px;
+  font-size: 12px; line-height: 1.35; color: var(--ink);
+}
+.wk-buy b { font-size: 11px; color: #fff; background: #ff3d8b; border-radius: 99px; padding: 3px 6px; }
+.wk-x {
+  position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; z-index: 1;
+  border: 0; border-radius: 50%; background: #f1e4ea; color: var(--ink-soft); font-size: 13px; cursor: pointer;
+}
+.wk-pop.friend {
+  width: 100%; border: 0; cursor: pointer; padding: 10px; font-size: 13px; line-height: 1.4; text-align: left;
+  background: #dcebf9; color: #1f3550; display: flex; flex-direction: column; gap: 4px; justify-content: center;
+}
+.wk-who { font-size: 11px; font-weight: 700; }
+.wk-msg { min-height: 1.5em; text-align: center; font-weight: 700; color: #ffb3d4; }
+.wk-msg.pop { animation: pop .4s; }
+
+/* 彩排碼表（?timer） */
+.play-timer {
+  position: fixed; top: 12px; right: 12px; z-index: 100; padding: 6px 12px; border-radius: 99px;
+  background: rgba(43, 29, 36, .85); color: #fff; font-size: 13px; font-variant-numeric: tabular-nums;
+}
+
 /* ---------- 全班結果 ---------- */
 .overlay.scroll { justify-content: flex-start; }
 .results { width: min(100%, 340px); display: flex; flex-direction: column; gap: 12px; text-align: left; }

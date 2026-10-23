@@ -19,6 +19,7 @@
     btnR: $('#btnRight'),
     overlay: $('#overlay'),
     cracks: $('#cracks'),
+    push: $('#push'),
   };
 
   let S; // 遊戲狀態
@@ -26,6 +27,7 @@
   let replyTimer = 0;
   let presenter = false; // 報告者模式（網址加 ?menu）
   let runId = 0;         // 每次重新開始就 +1，讓還在跑的 Boss 停下來
+  let full = false;      // 完整版（網址加 ?full）：顯示標了 extra 的卡片、Boss 的每一張理論卡
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -36,7 +38,7 @@
   function newState() {
     return {
       stats: { ...D.settings.start },
-      ch: 0, i: 0, day: 1, busy: true,
+      ch: 0, i: 0, day: 1, busy: true, pushes: 0,
       flags: {},                        // 記下的事＋「拒絕／接受了誰幾次」
       hours: { me: 0, partner: 0, mil: 0 },
       crashes: [],                      // { stat, side, day }
@@ -51,6 +53,7 @@
     S = newState();
     S.ch = ch;
     el.cracks.innerHTML = '';
+    el.push.classList.remove('show');
     hideReply();
     renderStats();
   }
@@ -73,9 +76,11 @@
   function renderStats(changed = {}) {
     for (const k of ['mood', 'baby', 'family']) {
       const node = document.querySelector(`.stat[data-stat="${k}"]`);
+      const locked = k === 'mood' && moodHidden();
+      node.classList.toggle('locked', locked);
       node.querySelector('i').style.width = S.stats[k] + '%';
-      node.classList.toggle('danger', S.stats[k] <= 20 || S.stats[k] >= 80);
-      flash(node, changed[k]);
+      node.classList.toggle('danger', !locked && (S.stats[k] <= 20 || S.stats[k] >= 80));
+      if (!locked) flash(node, changed[k]);
     }
     const bmi = bmiOf(S.stats.bmi);
     const diff = bmi - D.settings.bmiGoal;
@@ -115,6 +120,9 @@
     for (const [who, n] of Object.entries(h)) S.hours[who] = (S.hours[who] || 0) + n;
   }
 
+  // App 3.0 更新後，精神條被藏起來（還是會歸零崩潰，只是看不到）
+  const moodHidden = () => !!S.flags.hideMood;
+
   // 有沒有在分擔夜奶（協商過，而且沒有中途喊停）
   const sharing = () => !!S.flags.negotiate && !S.flags.negotiateStop;
 
@@ -132,7 +140,7 @@
     if (!side) return;
     const fx = currentCard()[side].effects || {};
     for (const [k, v] of Object.entries(fx)) {
-      if (!v) continue;
+      if (!v || (k === 'mood' && moodHidden())) continue;
       document.querySelector(`[data-stat="${k}"]`).classList.add(Math.abs(v) >= 8 ? 'pv-big' : 'pv');
     }
   }
@@ -186,6 +194,7 @@
   const currentCard = () => chapter().cards[S.i];
 
   function eligible(c) {
+    if (c.extra && !full) return false;
     const has = ([k, n]) => (S.flags[k] || 0) >= n;
     return Object.entries(c.when || {}).every(has) && !Object.entries(c.unless || {}).some(has);
   }
@@ -297,7 +306,33 @@
       return afterCards();
     }
     showCard();
+    maybePush();
   }
+
+  // 推播干擾：有設定 pushes 的章節，偶爾跳出推播蓋住卡片，要先關掉才能繼續滑
+  function maybePush() {
+    const cfg = chapter().pushes;
+    if (!cfg) return;
+    const hourly = !!S.flags.hourly; // 被開了「每小時提醒」之後推播更多
+    if (S.pushes >= cfg.max + (hourly ? 2 : 0) || Math.random() > cfg.chance * (hourly ? 1.8 : 1)) return;
+    S.pushes++;
+    S.busy = true;
+    const text = D.pushes[Math.floor(Math.random() * D.pushes.length)];
+    el.push.innerHTML = `
+      <button class="push-body" data-push="open">${flowerSVG()}<span><b>BLOOM・現在</b>${esc(text)}</span></button>
+      <button class="push-close" data-push="close" aria-label="關閉推播">✕</button>`;
+    el.push.classList.add('show');
+  }
+  el.push.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-push]');
+    if (!b) return;
+    if (b.dataset.push === 'open') {
+      applyEffects({ bmi: -1, mood: -1 });
+      showReply({ who: 'mascot', text: D.pushOpened });
+    }
+    el.push.classList.remove('show');
+    S.busy = false;
+  });
 
   function showReply(r) {
     const who = D.characters[r.who];
@@ -410,6 +445,7 @@
   actions.startChapter = () => {
     hideScreen();
     S.i = 0;
+    S.pushes = 0;
     if (seekCard()) showCard();
     else afterCards();
   };
@@ -426,7 +462,10 @@
       addHours(result.hours);
       applyEffects(result.effects);
       await resultScreen(cfg, result);
-      for (const id of [].concat(cfg.theory || [])) await theoryScreen(id);
+      // 精簡版只翻第一張，其他直接收進圖鑑；完整版每一張都翻
+      const ids = [].concat(cfg.theory || []);
+      if (full) for (const id of ids) await theoryScreen(id);
+      else if (ids.length) await theoryScreen(ids[0], ids.slice(1));
       await resolveCrashes();
     }
     chapterEnd();
@@ -436,7 +475,9 @@
     return new Promise((resolve) => {
       actions.resultGoOn = () => resolve();
       const fx = result.effects;
-      const fxText = KEYS.filter((k) => fx[k]).map((k) => `${ICON[k]} ${fx[k] > 0 ? '+' : ''}${fx[k]}`).join('　');
+      const fxText = KEYS.filter((k) => fx[k])
+        .map((k) => (k === 'mood' && moodHidden() ? `${ICON[k]} 🔒` : `${ICON[k]} ${fx[k] > 0 ? '+' : ''}${fx[k]}`))
+        .join('　');
       screen(`
         <div class="chapter-no">${esc(cfg.no)} 結束</div>
         <div class="chapter-title">${esc(cfg.title)}</div>
@@ -458,9 +499,12 @@
       <span class="tc-plain"><b>一句話</b>${esc(t.plain)}</span>`;
   }
 
-  function theoryScreen(id) {
+  function theoryScreen(id, also = []) {
     const t = D.theories[id];
-    if (!S.theories.includes(id)) S.theories.push(id);
+    for (const x of [id, ...also]) if (!S.theories.includes(x)) S.theories.push(x);
+    const alsoHTML = also.length
+      ? `<p class="note">也收進圖鑑：${also.map((x) => esc(`${D.theories[x].author}〈${D.theories[x].concept}〉`)).join('、')}</p>`
+      : '';
     return new Promise((resolve) => {
       actions.theoryGoOn = () => { hideScreen(); resolve(); };
       actions.flipTheory = () => $('#theoryCard').classList.add('flipped');
@@ -470,6 +514,7 @@
           <span class="tc-face tc-back">${flowerSVG()}<span>點一下翻開</span></span>
           <span class="tc-face tc-front">${theoryFrontHTML(t, S.last)}</span>
         </button>
+        ${alsoHTML}
         <button class="btn" data-act="theoryGoOn">收進圖鑑</button>`);
     });
   }
@@ -480,7 +525,7 @@
     const h = S.hours;
     return `<div class="summary">
       <span>⚖️ BMI ${bmiOf(S.stats.bmi).toFixed(1)}</span>
-      <span>🌙 ${S.stats.mood}</span><span>👶 ${S.stats.baby}</span><span>💞 ${S.stats.family}</span>
+      <span>🌙 ${moodHidden() ? '🔒' : S.stats.mood}</span><span>👶 ${S.stats.baby}</span><span>💞 ${S.stats.family}</span>
     </div>
     <div class="summary small">
       <span>照顧時數：你 ${Math.round(h.me)} 小時・伴侶 ${Math.round(h.partner)} 小時・婆婆 ${Math.round(h.mil)} 小時</span>
@@ -500,7 +545,7 @@
       ${summaryHTML()}
       ${hasNext
         ? '<button class="btn" data-act="nextChapter">下一章</button>'
-        : `<p class="note">第 ${S.ch + 2} 章製作中</p>
+        : `<p class="note">${esc(D.settings.comingSoon)}</p>
            ${sent ? `<p class="note">${esc(D.intro.sentNote)}</p>` : ''}
            <button class="btn" data-act="restart">重新開始</button>`}
       ${backToMenu()}`);
@@ -621,7 +666,7 @@
       <button class="btn" data-act="bossStart">開始</button>`, 'night');
 
     function run() {
-      const DURATION = 30000;  // 30 秒＝晚上 11 點到早上 6 點
+      const DURATION = (cfg.seconds || 30) * 1000; // 整段時間＝晚上 11 點到早上 6 點
       const CRY = 1800;        // 每次哭多久
       const PERFECT = 550;     // 最後這段時間點下去算完美
       const partnerOn = sharing();
@@ -951,6 +996,249 @@
     }
   });
 
+  // 聚餐視線閃躲：視線一亮就選一種方式擋，擋越多呼吸越少（高夫曼：可見性、掩飾）
+  BOSSES.gaze = (cfg) => new Promise((resolve) => {
+    const scene = S.flags.backToWork ? cfg.work : cfg.family;
+    actions.bossStart = () => run();
+    screen(`
+      <div class="chapter-no">${esc(cfg.no)}・${esc(scene.title)}</div>
+      <div class="chapter-title">${esc(cfg.title)}</div>
+      <ul class="bg-list">${cfg.rules.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+      <button class="btn" data-act="bossStart">開始</button>`, 'dusk');
+
+    function run() {
+      const myRun = runId;
+      const DURATION = cfg.seconds * 1000, WINDOW = cfg.window;
+      screen(`
+        <div class="gz">
+          <div class="gz-top"><b>${esc(scene.title)}</b><span id="gzTime"></span></div>
+          <div class="gz-breath"><span>😮‍💨 呼吸</span><div class="bar"><i id="gzBreath"></i></div></div>
+          <div class="gz-table">
+            <div class="gz-guests">${scene.guests.map((g) => `
+              <div class="gz-guest"><span class="gz-say"></span><span class="gz-face">${g}</span><span class="gz-beam"></span></div>`).join('')}
+            </div>
+            <div class="gz-dishes" aria-hidden="true">🍲 🥢 🍗 🍚</div>
+            <div class="gz-me" id="gzMe">🙂</div>
+          </div>
+          <div class="gz-msg" id="gzMsg" aria-live="polite"></div>
+          <div class="gz-covers">${cfg.covers.map((c, i) => `
+            <button class="gz-btn" data-c="${i}">${c.icon}<span>${esc(c.label)}</span></button>`).join('')}
+          </div>
+        </div>`, 'dusk boss');
+
+      const guests = [...document.querySelectorAll('.gz-guest')];
+      const me = $('#gzMe'), msg = $('#gzMsg'), breathBar = $('#gzBreath'), timeEl = $('#gzTime');
+      const btns = [...document.querySelectorAll('.gz-btn')];
+
+      // 排好每一次視線：誰看、說什麼
+      const events = [];
+      let ci = 0;
+      for (let t = 900; t < DURATION - WINDOW; t += 2000 + Math.random() * 900) {
+        events.push({ t, g: Math.floor(Math.random() * guests.length), say: scene.comments[ci++ % scene.comments.length] });
+      }
+
+      let breath = 100, covered = 0, seen = 0, active = null, done = false;
+      const t0 = performance.now();
+      const say = (s) => { msg.textContent = s; msg.classList.remove('pop'); void msg.offsetWidth; msg.classList.add('pop'); };
+
+      btns.forEach((b) => b.addEventListener('click', () => {
+        if (!active || active.by || breath <= 0) return;
+        const c = cfg.covers[+b.dataset.c];
+        active.by = c;
+        covered++;
+        breath = Math.max(0, breath - c.cost);
+        me.textContent = c.icon;
+        guests[active.g].classList.add('blocked');
+        say(`${c.label}，${cfg.blocked}`);
+        if (breath <= 0) {
+          btns.forEach((x) => { x.disabled = true; });
+          say(cfg.breathOut);
+        }
+      }));
+
+      function endEvent(ev) {
+        const g = guests[ev.g];
+        if (!ev.by) {
+          seen++;
+          me.textContent = '😣';
+          say(`${cfg.seenMsg}：「${ev.say}」`);
+        }
+        setTimeout(() => {
+          g.classList.remove('gazing', 'blocked');
+          g.querySelector('.gz-say').textContent = '';
+          if (!active) me.textContent = '🙂';
+        }, 600);
+        active = null;
+      }
+
+      function tick(now) {
+        if (myRun !== runId || done) return;
+        const t = now - t0;
+        timeEl.textContent = `${Math.max(0, Math.ceil((DURATION - t) / 1000))} 秒`;
+        breathBar.style.width = `${breath}%`;
+
+        if (active && t >= active.t + WINDOW) endEvent(active);
+        // 畫面卡頓時，已經過去的視線直接算被看見
+        for (const ev of events) {
+          if (!ev.started && t >= ev.t + WINDOW) { ev.started = true; seen++; }
+        }
+        const next = events.find((ev) => !ev.started && t >= ev.t && t < ev.t + WINDOW);
+        if (next && !active) {
+          next.started = true;
+          active = next;
+          const g = guests[next.g];
+          g.querySelector('.gz-say').textContent = next.say;
+          g.classList.add('gazing');
+          me.textContent = '😳';
+        }
+
+        if (t < DURATION) return requestAnimationFrame(tick);
+        done = true;
+        if (active) endEvent(active);
+        const vars = { covered, seen, breath: Math.round(breath) };
+        setTimeout(() => {
+          if (myRun !== runId) return;
+          resolve({
+            effects: {
+              mood: clamp(Math.round(-(100 - breath) / 8 - seen * 1.5), -14, 2),
+              family: clamp(covered - seen * 2, -8, 6),
+            },
+            hours: {},
+            text: fill(cfg.result, vars),
+            vars,
+            app: cfg.app,
+          });
+        }, 900);
+      }
+      requestAnimationFrame(tick);
+    }
+  });
+
+  // 推播打地鼠：要點小小的 ✕ 才關得掉，點到廣告就是購買（鄭斐文：健康工業集團；上野：市場吃掉外部）
+  BOSSES.whack = (cfg) => new Promise((resolve) => {
+    actions.bossStart = () => run();
+    screen(`
+      <div class="chapter-no">${esc(cfg.no)}</div>
+      <div class="chapter-title">${esc(cfg.title)}</div>
+      <ul class="bg-list">${cfg.rules.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+      <button class="btn" data-act="bossStart">開始</button>`, 'neon');
+
+    function run() {
+      const myRun = runId;
+      const DURATION = cfg.seconds * 1000;
+      const lerp = (a, b, p) => a + (b - a) * p;
+      const fmt = (n) => n.toLocaleString('en-US');
+      screen(`
+        <div class="wk">
+          <div class="wk-top"><b>${esc(cfg.title)}</b><span id="wkTime"></span></div>
+          <div class="wk-money" id="wkMoney">已扣款 <b>NT$0</b></div>
+          <div class="wk-grid" id="wkGrid">${Array.from({ length: cfg.slots }, (_, i) => `<div class="wk-slot" data-s="${i}"></div>`).join('')}</div>
+          <div class="wk-msg" id="wkMsg" aria-live="polite"></div>
+        </div>`, 'neon boss');
+
+      const slots = [...document.querySelectorAll('.wk-slot')];
+      const moneyEl = $('#wkMoney'), timeEl = $('#wkTime'), msg = $('#wkMsg');
+      const live = new Map(); // 格子編號 → { kind: 'ad' | 'friend', item, until }
+      let closed = 0, charged = 0, money = 0, help = 0, friendIdx = 0, nextAt = 600, done = false;
+      const t0 = performance.now();
+      const say = (s) => { msg.textContent = s; msg.classList.remove('pop'); void msg.offsetWidth; msg.classList.add('pop'); };
+
+      function charge(item) {
+        charged++;
+        money += item.price;
+        moneyEl.innerHTML = `已扣款 <b>NT$${fmt(money)}</b>`;
+        moneyEl.classList.remove('pop');
+        void moneyEl.offsetWidth;
+        moneyEl.classList.add('pop');
+      }
+
+      function clear(i) {
+        live.delete(i);
+        slots[i].innerHTML = '';
+      }
+
+      function spawn(t, p) {
+        const free = slots.map((_, i) => i).filter((i) => !live.has(i));
+        if (!free.length) return;
+        const i = free[Math.floor(Math.random() * free.length)];
+        const life = lerp(cfg.life[0], cfg.life[1], p);
+        if (friendIdx < cfg.friends.length && p >= cfg.friendAt[friendIdx]) {
+          const f = cfg.friends[friendIdx++];
+          live.set(i, { kind: 'friend', item: f, until: t + life * 1.6 });
+          slots[i].innerHTML = `<button class="wk-pop friend" data-k="body"><span class="wk-who">💬 ${esc(D.characters[f.who].name)}</span>${esc(f.text)}</button>`;
+          return;
+        }
+        const item = cfg.ads[Math.floor(Math.random() * cfg.ads.length)];
+        live.set(i, { kind: 'ad', item, until: t + life });
+        slots[i].innerHTML = `<div class="wk-pop ad">
+          <button class="wk-buy" data-k="body"><span>${esc(item.text)}</span><b>立即購買 NT$${fmt(item.price)}</b></button>
+          <button class="wk-x" data-k="x" aria-label="關閉推播">✕</button>
+        </div>`;
+      }
+
+      $('#wkGrid').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-k]');
+        if (!b || done) return;
+        const i = +b.closest('.wk-slot').dataset.s;
+        const pop = live.get(i);
+        if (!pop) return;
+        if (pop.kind === 'friend') {
+          help++;
+          say(cfg.friendYes);
+        } else if (b.dataset.k === 'x') {
+          closed++;
+        } else {
+          charge(pop.item);
+          say(cfg.boughtMsg);
+        }
+        clear(i);
+      });
+
+      function tick(now) {
+        if (myRun !== runId || done) return;
+        const t = now - t0, p = Math.min(1, t / DURATION);
+        timeEl.textContent = `${Math.max(0, Math.ceil((DURATION - t) / 1000))} 秒`;
+        for (const [i, pop] of live) {
+          if (t < pop.until) continue;
+          if (pop.kind === 'ad') {
+            charge(pop.item);
+            say(cfg.expiredMsg);
+          }
+          clear(i);
+        }
+        if (t >= nextAt && t < DURATION - 400) {
+          spawn(t, p);
+          nextAt = t + lerp(cfg.gap[0], cfg.gap[1], p);
+        }
+        if (t < DURATION) return requestAnimationFrame(tick);
+
+        done = true;
+        for (const [i, pop] of live) {
+          if (pop.kind === 'ad') charge(pop.item);
+          clear(i);
+        }
+        say(cfg.overload);
+        const vars = { closed, charged, money: fmt(money), help };
+        vars.helpPart = help ? fill(cfg.helpYes, vars) : cfg.helpNo;
+        setTimeout(() => {
+          if (myRun !== runId) return;
+          resolve({
+            effects: {
+              mood: clamp(-charged + help * 3, -12, 4),
+              bmi: clamp(-Math.round(charged / 2), -6, 0),
+              family: help ? 3 : -2,
+            },
+            hours: {},
+            text: fill(cfg.result, vars),
+            vars,
+            app: cfg.app,
+          });
+        }, 1200);
+      }
+      requestAnimationFrame(tick);
+    }
+  });
+
   // ---------- 全班數據（設定在 config.js，步驟見〈全班數據與發布步驟.md〉） ----------
   const CFG = window.BLOOM_CONFIG || {};
   // 表單每一題標題後面的英文代號；遊戲靠它對應題目
@@ -1135,9 +1423,22 @@
   //   ?boss=1   直接玩第 1 章的 Boss
   //   ?skip     跳過開場
   //   ?nosend   玩完不送出全班數據（測試用）
+  //   ?full     完整版：顯示所有卡片和每一張理論卡（預設是給同學的 8 分鐘精簡版）
+  //   ?timer    右上角顯示碼表，彩排時計時用
   $('#brandFlower').innerHTML = flowerSVG();
   const q = new URLSearchParams(location.search);
   const chOf = (v) => clamp((parseInt(v, 10) || 1) - 1, 0, D.chapters.length - 1);
+  full = q.has('full');
+  if (q.has('timer')) {
+    const badge = document.createElement('div');
+    badge.className = 'play-timer';
+    document.body.appendChild(badge);
+    const start = Date.now();
+    setInterval(() => {
+      const s = Math.floor((Date.now() - start) / 1000);
+      badge.textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    }, 500);
+  }
   presenter = q.has('menu') || q.has('results');
   resetGame(0);
   if (presenter) {

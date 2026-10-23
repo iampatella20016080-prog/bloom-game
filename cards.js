@@ -15,6 +15,7 @@
 //   when   支線卡：要記下這些事才會出現，例如 { diet1200: 1 }
 //   unless 支線卡：記下這些事就「不」出現
 //   theory 這張卡對應的理論（之後做理論卡圖鑑用，遊戲中暫時不顯示）
+//   extra  true＝只在完整版出現（網址加 ?full）。同學玩的精簡版會跳過，讓整場控制在 8 分鐘左右
 //
 // App 推薦文章（台灣案例）：卡片加上 type: 'article'，不用 text，改填
 //   article  { title 標題, source 來源與日期, summary 摘要, cite 轉引出處（可省略） }
@@ -43,7 +44,21 @@ window.BLOOM_DATA = {
     // 崩潰後數值回到多少
     crashReset: { low: 20, high: 80 },
     totalDays: 180,
+    // 最後一章結束時顯示（之後做好結局就會換掉）
+    comingSoon: '結局、App 當機後露出的「後台」和「重寫 App」，製作第 6 次加入',
   },
+
+  // 推播干擾：有設定 pushes 的章節，滑卡時偶爾會跳出這些推播蓋住卡片
+  pushes: [
+    '⏰ 你今天還沒量體重喔！',
+    '🔥 限時 8 折：產後代餐 30 天份',
+    '💬 3 位媽媽剛剛打卡運動了',
+    '🏥 減重門診線上掛號，今天還有名額',
+    '📉 你的進度落後 72% 的用戶',
+    '✨ 產後瘦回孕前！把握黃金期',
+    '🛍️ 你收藏的塑身衣快賣完了',
+  ],
+  pushOpened: '已為你加入購物車 🛒',
 
   characters: {
     mascot:   { name: '小綻',     role: 'BLOOM 吉祥物', avatar: 'flower', color: '#ff8fb8' },
@@ -151,14 +166,14 @@ window.BLOOM_DATA = {
           theory: '醫學要求互相矛盾',
         },
         {
-          who: 'mil', day: 9,
+          who: 'mil', day: 9, extra: true,
           text: '月子裡不能洗頭、不能碰冷水，手機也不要一直滑，對眼睛不好。',
           left:  { label: '我想洗頭', effects: { mood: 8, family: -8 },
                    reply: { who: 'mil', text: '以後老了頭痛不要怪我喔。' } },
           right: { label: '好……', effects: { mood: -6, family: 5 } },
         },
         {
-          who: 'coworker', day: 12,
+          who: 'coworker', day: 12, extra: true,
           text: '月子還好嗎？產假只有 8 週，大家都在問你什麼時候回來～ ps. 主管說你的專案先交給 Amy 接喔',
           left:  { label: '先已讀', effects: { mood: -4 } },
           right: { label: '回：我會盡快回去', effects: { mood: -8, family: -3 },
@@ -166,7 +181,7 @@ window.BLOOM_DATA = {
           theory: '上野：雙重負擔',
         },
         {
-          who: 'mascot', day: 15,
+          who: 'mascot', day: 15, extra: true,
           text: '看看這位網紅媽媽，產後 30 天就穿回孕前牛仔褲！👖 要不要訂購同款「產後束腹帶」？',
           left:  { label: '不用', effects: { bmi: 2 } },
           right: { label: '訂購', effects: { bmi: -4, mood: -4 }, flags: { binder: 1 },
@@ -200,7 +215,7 @@ window.BLOOM_DATA = {
           theory: '鄭斐文：健康工業集團',
         },
         {
-          who: 'nurse', day: 21,
+          who: 'nurse', day: 21, extra: true,
           text: '寶寶體重增加得有點慢。白天多餵幾次，晚上也要叫醒他喝喔。',
           left:  { label: '我真的好累', effects: { mood: 4, baby: -10 } },
           right: { label: '我再撐一下', effects: { mood: -10, baby: 10 },
@@ -208,7 +223,7 @@ window.BLOOM_DATA = {
           theory: '鄭斐文：科學母職',
         },
         {
-          who: 'partner', day: 24, unless: { 'left:mil': 2 },
+          who: 'partner', day: 24, extra: true, unless: { 'left:mil': 2 },
           text: '我媽說你最近臉色很臭……你可以對她好一點嗎？',
           left:  { label: '是你媽一直管我', effects: { family: -10, mood: 4 },
                    reply: { who: 'partner', text: '她也是好意啊……' } },
@@ -235,7 +250,7 @@ window.BLOOM_DATA = {
       boss: 'tetris',
       cards: [
         {
-          who: 'mil', day: 30,
+          who: 'mil', day: 30, extra: true,
           text: '滿月了，我明天就回南部喔。你一個人可以吧？有事再打給我。',
           left:  { label: '可以再留一週嗎？', effects: { mood: 6, family: -4 }, hours: { mil: 6 },
                    reply: { who: 'mil', text: '我家裡也有事啊……好啦，再留三天。' } },
@@ -243,7 +258,7 @@ window.BLOOM_DATA = {
           theory: '上野：家庭是市場的「外部」（1.2）',
         },
         {
-          who: 'mascot', day: 31,
+          who: 'mascot', day: 31, extra: true,
           text: '滿月快樂🎉！「黃金減重期」已經過了 31 天，你的進度落後囉。要不要試用「產後體態私人教練」方案？',
           left:  { label: '不用', effects: { bmi: 2 },
                    reply: { who: 'mascot', text: '沒關係～但其他媽媽都開始了喔 👀' } },
@@ -269,7 +284,7 @@ window.BLOOM_DATA = {
           theory: '高夫曼：聲望象徵（p.53–58）',
         },
         {
-          who: 'partner', day: 35,
+          who: 'partner', day: 35, extra: true,
           text: '我同事說他老婆生完一個月就恢復身材了耶。你要不要也試試 App 的課程？',
           left:  { label: '你可以不要比較嗎', effects: { family: -8, mood: 2 },
                    reply: { who: 'partner', text: '我只是隨口說說啊……' } },
@@ -316,7 +331,7 @@ window.BLOOM_DATA = {
           theory: '鄭斐文：科學母職，哺乳也被肥胖科學指導（p.61）',
         },
         {
-          who: 'coworker', day: 44,
+          who: 'coworker', day: 44, extra: true,
           text: '主管說下個月的專案要開會，問你要不要先遠端參加一下？',
           left:  { label: '我還在產假', effects: { mood: 2 },
                    reply: { who: 'coworker', text: '好喔～我幫你跟他說（他臉色不太好看）' } },
@@ -351,10 +366,248 @@ window.BLOOM_DATA = {
         },
         {
           // {bmiStatus}、{left} 會自動換成玩家當下的數字
-          who: 'mascot', day: 56,
+          who: 'mascot', day: 56, extra: true,
           text: '產假最後一天！🎉 你的 {bmiStatus}，距離黃金期結束還有 {left} 天。明天開始，忙也別忘了運動喔！',
           left:  { label: '關掉通知', effects: { mood: 3, bmi: 1 } },
           right: { label: '我會更努力', effects: { mood: -6, bmi: -3 } },
+          theory: '把問題個人化成意志力',
+        },
+      ],
+    },
+    {
+      no: '第 3 章',
+      title: '第 3 個月・回到人群',
+      background: [
+        '第 3 個月。你要回到人群裡了：同事、親戚、鄰居。',
+        '產後的身體很難藏：肚子、哺乳、黑眼圈，都會被看見。',
+        '法律保障你在公共場所哺乳，但飯桌上的眼光，沒有法律管。',
+      ],
+      boss: 'gaze',
+      // 第 2 章選「回去上班」（backToWork）走職場線，其他人走家族線
+      cards: [
+        // App 自動更新：之後精神條被藏起來（單一指標治理）
+        {
+          who: 'mascot', day: 60,
+          text: 'BLOOM 3.0 更新 ✨ 為了讓你專注在最重要的目標，我們將隱藏「次要指標」。',
+          left:  { label: '稍後提醒我', flags: { hideMood: 1 },
+                   reply: { who: 'mascot', text: '已為你自動更新 ✨ 現在只要看 BMI 就好囉！' } },
+          right: { label: '立即更新', flags: { hideMood: 1 },
+                   reply: { who: 'mascot', text: '更新完成！精神什麼的，就交給小綻吧 🌸' } },
+          theory: '鄭斐文：BMI 的單一指標治理（p.40）',
+        },
+        {
+          who: 'manager', day: 61, when: { backToWork: 1 },
+          text: '歡迎回來！下週部門聚餐，大家都很想見你喔。',
+          left:  { label: '我要早點回家顧寶寶', effects: { family: 2, mood: -2 },
+                   reply: { who: 'coworker', text: '（群組裡有人開始叫你「準時下班媽媽」）' } },
+          right: { label: '好，我參加', effects: { mood: -4, family: -4 } },
+          theory: '上野：雙重負擔（10.5–10.6）',
+        },
+        {
+          who: 'mil', day: 61, unless: { backToWork: 1 },
+          text: '下週阿嬤八十大壽，全家族都會來，你帶寶寶回來給大家看看喔。',
+          left:  { label: '我想在家休息', effects: { family: -10, mood: 4 },
+                   reply: { who: 'mil', text: '大家都在問你，你不來我很難交代欸。' } },
+          right: { label: '好，我們回去', effects: { family: 6, mood: -4 } },
+          theory: '高夫曼：混類接觸（p.14–22）',
+        },
+        // 台灣案例：公共場所母乳哺育條例（查證見〈台灣案例查證.md〉第 6 項）
+        {
+          type: 'article', who: 'mascot', day: 63,
+          article: {
+            title: '公共場所母乳哺育條例：哺乳，任何人不得驅離',
+            source: '衛福部國民健康署；2019 年修法',
+            summary: '婦女在公共場所哺乳時，任何人不得禁止、驅離或妨礙，違者罰 6,000 到 30,000 元。2019 年修法，該設哺集乳室卻沒設的場所，罰鍰提高到 2 萬到 10 萬元。',
+          },
+          quip: { who: 'mil', text: '法律是法律啦，在外面還是要遮一下。' },
+          left:  { label: '略過' },
+          right: { label: '收藏文章', effects: { mood: 2 } },
+          theory: '高夫曼：可見性與掩飾（p.58、121）',
+        },
+        {
+          who: 'coworker', day: 65, when: { backToWork: 1 },
+          text: '你要去擠奶喔？會議室可以借你……不過 11 點有人要用。',
+          left:  { label: '我去廁所擠就好', effects: { mood: -6, baby: 2 } },
+          right: { label: '公司應該要有哺集乳室', effects: { mood: 2, family: -2 }, flags: { speakUp: 1 },
+                   reply: { who: 'coworker', text: '說得也是……我幫你問問總務。' } },
+          theory: '高夫曼：蹤混通關，把污名藏起來（p.86）',
+        },
+        {
+          who: 'mascot', day: 65, extra: true, unless: { backToWork: 1 },
+          text: '媽媽社群熱門話題 🔥「產後 3 個月，你瘦了幾公斤？」要分享你的數字嗎？',
+          left:  { label: '不分享', effects: { mood: 2 } },
+          right: { label: '分享', effects: { mood: -5 },
+                   reply: { who: 'mascot', text: '有 128 位媽媽比你瘦得多，一起加油 💪' } },
+          theory: '高夫曼：聲望象徵與污名象徵（p.53–58）',
+        },
+        {
+          who: 'mascot', day: 68,
+          text: '出門小提醒 👗 深色衣服、高腰褲最顯瘦！要不要看「產後遮肚穿搭」？',
+          left:  { label: '穿我想穿的', effects: { mood: 3 } },
+          right: { label: '看看', effects: { mood: -3 }, flags: { covered: 1 },
+                   reply: { who: 'mascot', text: '本週熱銷：產後塑身衣 NT$1,680 🛍️' } },
+          theory: '高夫曼：掩飾（p.121）',
+        },
+        {
+          who: 'partner', day: 70, extra: true,
+          text: '你穿那件洋裝好像有點緊……要不要換一件？',
+          left:  { label: '我覺得很好看', effects: { family: -6, mood: 3 },
+                   reply: { who: 'partner', text: '好啦好啦，你開心就好。' } },
+          right: { label: '……好，我去換', effects: { mood: -6, family: 3 } },
+          theory: '高夫曼：虛擬與真實的社會身分（p.2–22）',
+        },
+        {
+          who: 'mascot', day: 76, extra: true,
+          text: '新功能上線 📸「身材 AI 評分」：上傳全身照，看看你離「辣媽」還差多少！',
+          left:  { label: '不要', effects: { mood: 1 } },
+          right: { label: '上傳', effects: { mood: -6, bmi: -1 },
+                   reply: { who: 'mascot', text: '你的辣媽指數：62 分，打敗了 41% 的媽媽 🌸' } },
+          theory: '鄭斐文：醫學與男性凝視下的「最有吸引力」（p.42）',
+        },
+        {
+          who: 'mil', day: 80,
+          text: '親戚都說你胖了，我都幫你說是剛生完啦。',
+          left:  { label: '我本來就剛生完啊', effects: { family: -6, mood: 2 } },
+          right: { label: '……謝謝媽', effects: { mood: -6, family: 4 } },
+          theory: '高夫曼：連帶污名，家人也一起覺得丟臉（p.30）',
+        },
+        {
+          who: 'manager', day: 85, when: { backToWork: 1 },
+          text: '這次的升遷名單……我們想說你家裡比較忙，就先不放你了，你應該能理解吧？',
+          left:  { label: '我可以勝任', effects: { mood: -2, family: -2 },
+                   reply: { who: 'manager', text: '我也是為你好啊。' } },
+          right: { label: '……我理解', effects: { mood: -8 } },
+          theory: '上野：勞動力邊緣化、雙重限制（10.7）',
+        },
+        {
+          who: 'coworker', day: 85, unless: { backToWork: 1 },
+          text: '跟你說一下，你的位置先找了約聘的人頂，主管說等你回來再看看～',
+          left:  { label: '我想提早回去', effects: { mood: -4, baby: -4 }, flags: { backEarly: 1 } },
+          right: { label: '……好，我知道了', effects: { mood: -6 } },
+          theory: '上野：中斷再就業的代價（11.5）',
+        },
+        {
+          who: 'mascot', day: 88,
+          text: '第 3 個月報告 📊 你的 {bmiStatus}，距離黃金期結束還有 {left} 天。精神狀況？不用擔心，小綻都幫你藏好了 🌸',
+          left:  { label: '把精神條還我', effects: { mood: 2 },
+                   reply: { who: 'mascot', text: '這個功能需要升級到 BLOOM Premium 喔 💎' } },
+          right: { label: '好……', effects: { mood: -4, bmi: -1 } },
+          theory: '鄭斐文：BMI 的單一指標治理（p.40）',
+        },
+      ],
+    },
+    {
+      no: '第 4 章',
+      title: '第 5 個月・最後衝刺',
+      background: [
+        '距離 App 的「180 天」只剩兩個月，推播越來越多。',
+        '2023 年的健康媒體還在說：產後「應好好把握產後6個月的黃金期」。',
+        '照顧、瘦身、休息，每一件事都有人想賣你一個方案。',
+      ],
+      boss: 'whack',
+      pushes: { chance: 0.35, max: 3 }, // 推播干擾：每張卡之後有多少機率跳出推播、這章最多幾次
+      cards: [
+        {
+          who: 'mascot', day: 120,
+          text: '倒數 60 天 ⏳ 小綻為你準備了「最後衝刺方案」：代餐＋減重門診＋私人教練，每月只要 NT$6,990！',
+          left:  { label: '不需要', effects: { bmi: 2 },
+                   reply: { who: 'mascot', text: '真的嗎？其他媽媽都報名了喔 👀' } },
+          right: { label: '報名', effects: { bmi: -5, mood: -4 }, flags: { sprint: 1 },
+                   reply: { who: 'mascot', text: '已扣款 💳 你做了最正確的決定！' } },
+          theory: '鄭斐文：健康工業集團（p.39）',
+        },
+        // 台灣案例：月子中心收費與塑身服務（查證見〈台灣案例查證.md〉第 7 項）
+        {
+          type: 'article', who: 'mascot', day: 122,
+          article: {
+            title: '加強產後護理機構管理，維護產婦及嬰兒權益',
+            source: '衛生福利部，2013 年 8 月 11 日',
+            summary: '衛福部指出，媒體報導部分產後護理機構「入住一個月，動輒50、60萬」，而且「標榜健康管理，卻提供美容、塑身、養生等服務內容」。',
+          },
+          quip: { who: 'mil', text: '我們那個年代，坐月子都是家裡的人在顧，哪要花錢？' },
+          left:  { label: '略過' },
+          right: { label: '收藏文章', effects: { mood: -1 } },
+          theory: '上野：市場吃掉自己的外部（10.2）',
+        },
+        {
+          who: 'partner', day: 125, extra: true,
+          text: '我同事說代餐很有效耶，他老婆就是喝那個瘦的。',
+          left:  { label: '我還在餵奶', effects: { family: -4, mood: 2 },
+                   reply: { who: 'partner', text: '喔對……我忘了。' } },
+          right: { label: '……我試試看', effects: { bmi: -3, baby: -4, mood: -3 } },
+          theory: '鄭斐文：女性被不成比例地「警告」（p.45–47）',
+        },
+        {
+          who: 'mil', day: 128, extra: true,
+          text: '你還在餵奶，不要亂吃那些代餐，對寶寶不好！',
+          left:  { label: 'App 說沒關係', effects: { family: -6, bmi: -1 } },
+          right: { label: '好，我不吃了', effects: { family: 4, bmi: 2 },
+                   reply: { who: 'mascot', text: '⚠️ 偵測到你暫停了代餐方案，進度可能會落後喔' } },
+          theory: '醫學要求互相矛盾',
+        },
+        {
+          who: 'mascot', day: 135,
+          text: '⚠️ 你已經 3 天沒有記錄體重了。為了不讓努力白費，已為你開啟「每小時提醒」🔔',
+          left:  { label: '關掉提醒', effects: { mood: -2 }, flags: { hourly: 1 },
+                   reply: { who: 'mascot', text: '關閉前需要驗證身分……已先為你維持開啟 🔔' } },
+          right: { label: '好吧', effects: { mood: -4 }, flags: { hourly: 1 } },
+          theory: '鄭斐文：健康工業集團（p.39）',
+        },
+        {
+          who: 'manager', day: 140, when: { backToWork: 1 },
+          text: '下個月要去高雄出差三天，你應該可以吧？寶寶給家人顧就好。',
+          left:  { label: '我沒辦法出差', effects: { mood: -2 },
+                   reply: { who: 'manager', text: '那這個案子就先給別人了。' } },
+          right: { label: '我想辦法', effects: { mood: -8, baby: -4 }, hours: { partner: 6, mil: 6 } },
+          theory: '上野：勞動力邊緣化、雙重限制（10.7）',
+        },
+        {
+          who: 'coworker', day: 140, unless: { backToWork: 1 },
+          text: '主管問你育嬰留停結束後還會不會回來……他說「很多媽媽後來都沒回來」。',
+          left:  { label: '我一定會回去', effects: { mood: -4 } },
+          right: { label: '我還不知道', effects: { mood: -6 }, flags: { mayQuit: 1 } },
+          theory: '台灣：已婚婦女 22.7% 曾因生育離職（衛福部 2019）',
+        },
+        // 支線：第 2 章要求過育嬰留停一人請一半
+        {
+          who: 'partner', day: 150, when: { shareLeave: 1 },
+          text: '我跟主管說想請育嬰留停，他笑說「男人請什麼育嬰假」……',
+          left:  { label: '我們一起想辦法', effects: { family: -2, mood: 4 }, flags: { fight: 1 },
+                   reply: { who: 'partner', text: '好，我去問人資怎麼申請。' } },
+          right: { label: '算了，我來就好', effects: { mood: -8 }, flags: { giveUp: 1 } },
+          theory: '台灣：2025 年申請育嬰留停的男性只占 27.8%（勞動部）',
+        },
+        {
+          who: 'mascot', day: 155, extra: true,
+          text: 'BLOOM 獨家數據 📊 堅持到最後的媽媽，平均瘦了 8.2 公斤！你的 {bmiStatus}。',
+          left:  { label: '這數據哪來的？', effects: { mood: 2 },
+                   reply: { who: 'mascot', text: '數據來自 BLOOM 付費會員 🌸' } },
+          right: { label: '我要更努力', effects: { mood: -6, bmi: -2 } },
+          theory: '把問題個人化成意志力',
+        },
+        {
+          who: 'mascot', day: 160,
+          text: '最後 20 天！🔥 參加「斷食 3 天挑戰」，一口氣衝刺目標！',
+          left:  { label: '我不要', effects: { mood: 2 },
+                   reply: { who: 'mascot', text: '那就只能看你的意志力了 💪' } },
+          right: { label: '參加', effects: { bmi: -6, mood: -10, baby: -6 } },
+          theory: '鄭斐文：把問題個人化成意志力（p.61）',
+        },
+        {
+          who: 'partner', day: 170,
+          text: '我覺得你最近一直盯著那個 App……你還好嗎？要不要聊聊？',
+          left:  { label: '我沒事', effects: { mood: -4 },
+                   reply: { who: 'partner', text: '……好，你需要我就說。' } },
+          right: { label: '其實我好累', effects: { mood: 6, family: 4 }, flags: { talk: 1 },
+                   reply: { who: 'partner', text: '那我們一起想想，哪些事我可以接手。' } },
+          theory: '上野：再生產勞動不是本能，要重新分配',
+        },
+        {
+          who: 'mascot', day: 175,
+          text: '倒數 5 天 ⏳ 你的 {bmiStatus}。最後的機會，千萬別放棄！',
+          left:  { label: '我想先休息', effects: { mood: 3, bmi: 1 },
+                   reply: { who: 'mascot', text: '休息是給有達標的人喔 🌸' } },
+          right: { label: '我會撐到最後', effects: { mood: -6, bmi: -2 } },
           theory: '把問題個人化成意志力',
         },
       ],
@@ -366,6 +619,7 @@ window.BLOOM_DATA = {
       no: 'BOSS',
       title: '夜奶節奏戰',
       theme: 'night',
+      seconds: 22, // 22 秒＝晚上 11 點到早上 6 點
       rules: [
         '晚上 11 點到早上 6 點。',
         '寶寶一哭，就點寶寶。光圈縮到最小時點，是「完美安撫」，比較不傷睡眠。',
@@ -393,7 +647,7 @@ window.BLOOM_DATA = {
       feedCells: [0, 3, 6, 9, 12, 15, 18, 21],
       partnerCells: [0, 3], // 協商過夜奶輪流：這兩餐伴侶負責，格子空出來
       partnerName: '伴侶接手的夜奶',
-      pieceSeconds: 7,
+      pieceSeconds: 5,
       kinds: {
         feed:     { icon: '🍼', name: '餵奶' },
         care:     { icon: '🧺', name: '照顧與家事' },
@@ -426,6 +680,82 @@ window.BLOOM_DATA = {
       appNo: '今天又沒運動喔！時間是擠出來的 💪',
       theory: ['uenoDouble', 'zhengScience'],
     },
+    // 聚餐視線閃躲：視線一來就選一種方式擋。擋越多呼吸越少，呼吸用完就擋不住了。
+    gaze: {
+      no: 'BOSS',
+      title: '聚餐視線閃躲',
+      theme: 'dusk',
+      rules: [
+        '飯桌上的人會輪流看向你，還會說一句話。',
+        '視線一亮，就在 1.6 秒內選一種方式擋：外套、抱寶寶、縮小腹。',
+        '每擋一次都會用掉呼吸，呼吸用完就再也擋不住了。不擋，就會被看見。',
+      ],
+      seconds: 20,
+      window: 1600,
+      covers: [
+        { icon: '🧥', label: '外套遮住', cost: 8 },
+        { icon: '👶', label: '抱寶寶擋', cost: 6 },
+        { icon: '😮‍💨', label: '縮小腹', cost: 12 },
+      ],
+      work: {
+        title: '部門聚餐',
+        guests: ['👩‍💼', '👨‍💼', '👩‍💻', '🧑‍💼'],
+        comments: ['你是不是還沒瘦回來？', '生完還好嗎？看起來好累', '你要吃那麼多喔？', '餵母奶不是會瘦很快？',
+          '我老婆生完三個月就瘦回去了', '你現在還能加班嗎？'],
+      },
+      family: {
+        title: '阿嬤八十大壽',
+        guests: ['👵', '👴', '👩', '🧔'],
+        comments: ['怎麼胖這麼多？', '還在餵奶喔？要遮一下', '趁年輕再生一個啦！', '寶寶好像有點瘦，奶夠嗎？',
+          '要多吃一點才有奶啦', '你婆婆說你都不聽她的'],
+      },
+      blocked: '擋住了',
+      seenMsg: '被看見了',
+      breathOut: '喘不過氣，擋不住了……',
+      result: '你擋掉了 {covered} 道視線，被看見 {seen} 次，呼吸剩下 {breath}%。',
+      app: '下次穿上塑身衣，就不用一直躲了喔！限時 8 折 🛍️',
+      theory: ['goffmanCovering', 'goffmanVisible'],
+    },
+    // 推播打地鼠：廣告要點右上角的小 ✕ 才關得掉，點到廣告本身就是「購買」；沒關掉也會自動扣款。
+    // 中間會夾雜真正關心你的訊息（點一下就是回覆）。
+    whack: {
+      no: 'BOSS',
+      title: '推播打地鼠',
+      theme: 'neon',
+      rules: [
+        '小綻的推播會一直冒出來。點右上角的 ✕ 才能關掉，點到廣告本身就是「購買」。',
+        '沒關掉的推播會自動扣款。',
+        '仔細看：有些訊息不是廣告。',
+      ],
+      seconds: 20,
+      slots: 9,
+      life: [1600, 950], // 推播停留多久（毫秒）：從 1.6 秒越來越短
+      gap: [650, 300],   // 多久冒出一個：越來越快
+      ads: [
+        { text: '產後代餐 30 天份', price: 1990 },
+        { text: '減重門診 今日限定', price: 1500 },
+        { text: '塑身衣 買一送一', price: 1680 },
+        { text: '私人教練 年繳優惠', price: 2990 },
+        { text: '斷食挑戰 報名費', price: 499 },
+        { text: '產後體雕 體驗價', price: 3990 },
+        { text: '瘦身茶 試喝組', price: 299 },
+        { text: '產後瘦回孕前！黃金期課程', price: 990 },
+      ],
+      friends: [
+        { who: 'partner', text: '今天我來顧寶寶，你去睡一下？' },
+        { who: 'coworker', text: '好久不見，要不要出來喝杯咖啡？' },
+      ],
+      friendAt: [0.35, 0.7], // 朋友的訊息在第幾成的時間出現
+      boughtMsg: '點到廣告了……已購買 💳',
+      expiredMsg: '沒關掉，自動扣款 💳',
+      friendYes: '你回覆了 💬',
+      overload: '⚠️ 推播過多，BLOOM 好像有點卡卡的……',
+      result: '你關掉了 {closed} 則推播，漏掉或點到 {charged} 則，被扣款 NT${money}。{helpPart}',
+      helpYes: '你接住了 {help} 則真正關心你的訊息。',
+      helpNo: '真正關心你的訊息，被淹沒在推播裡了。',
+      app: '感謝支持 💳 你的「衝刺方案」已自動升級為年繳！',
+      theory: ['zhengIndustry', 'uenoOutside'],
+    },
   },
 
   // 理論卡（第 6 次製作會做成圖鑑）
@@ -456,6 +786,42 @@ window.BLOOM_DATA = {
       quote: '女性從懷孕到生產、哺乳、坐月子、養育健康兒童等階段，「皆必須受到肥胖科學的指導」。',
       experienced: '這個月，App 說「餵母奶也能瘦」，兒科醫師要你「每一餐都記錄」。好媽媽的標準，都來自專家和數據。',
       plain: '照著專家和數據帶小孩，才算「正統」的好媽媽；做不到，就被說成不夠努力。',
+    },
+    // 高夫曼《污名》是掃描檔，下面兩張的 quote 是讀書筆記的整理，不是逐字引文
+    goffmanCovering: {
+      author: '高夫曼',
+      source: '《污名》第二章〈掩飾〉，頁 121–124',
+      concept: '掩飾：大家都知道了，還是要藏',
+      quote: '已經被別人知道有污名的人，仍會花很多力氣讓污名「不要被放大」，好讓互動順利進行。',
+      experienced: '你剛剛擋掉了 {covered} 道視線，呼吸只剩 {breath}%。大家都知道你剛生完，你還是得一直遮。',
+      plain: '藏起來不是因為別人不知道，而是為了讓別人不尷尬。代價是你一直喘不過氣。',
+      demo: { covered: 7, breath: 30 },
+    },
+    goffmanVisible: {
+      author: '高夫曼',
+      source: '《污名》第二章〈可見性〉，頁 58–61',
+      concept: '可見性：產後的身體藏不住',
+      quote: '污名能不能被察覺，取決於「可見性」；它干擾互動的程度，叫做「突兀性」。',
+      experienced: '肚子、哺乳、黑眼圈，在飯桌上全都看得見。你被看見了 {seen} 次，每一次都有人說一句話。',
+      plain: '看得見的身體沒辦法「假裝正常」，只能不停地掩飾，或者承受別人的評論。',
+      demo: { seen: 4 },
+    },
+    zhengIndustry: {
+      author: '鄭斐文',
+      source: '〈肥胖科學、醫療化與性別身體政治〉，2012，頁 39',
+      concept: '健康工業集團：藥廠、政府、專家說同一套話',
+      quote: '減重藥物廠商、政府部門（如衛生署等機構）、以及相關的公共衛生學者，在肥胖論述上的一致性，可以看成是一龐大、具支配性的「健康工業集團」。',
+      experienced: '你剛剛被扣了 NT${money}。代餐、門診、塑身衣、教練，全都在說同一句話：你還不夠瘦。',
+      plain: '「你該瘦」不只是醫學建議，背後還有一整個靠你焦慮賺錢的產業。',
+      demo: { money: '8,960' },
+    },
+    uenoOutside: {
+      author: '上野千鶴子',
+      source: '《父權體制與資本主義》第 10 章 10.2',
+      concept: '市場吃掉自己的「外部」',
+      quote: '市場「找到內在的『外部』，就是以位居市場之外的家庭作為內在的新開發地」。',
+      experienced: '坐月子、哄睡、瘦身、休息，原本在家裡發生、沒有標價的事，一件一件被做成收費方案。',
+      plain: '市場會把家庭裡沒有標價的事變成商品，再賣回給你。',
     },
   },
 
