@@ -1023,14 +1023,23 @@
   // 每個 Boss 是一個 async 函式，回傳 { effects, hours, text, vars }
   const BOSSES = {};
 
-  // 夜奶節奏戰：寶寶一哭就點，睡眠條往下掉（上野：無償勞動沒有下班時間）
-  BOSSES.nightFeed = (cfg) => new Promise((resolve) => {
+  // Boss 開始前的說明畫面：一句情境＋「怎麼玩」步驟，按「開始」才跑 run
+  function bossIntro(cfg, run, { no = cfg.no, time = '' } = {}) {
     actions.bossStart = () => run();
     screen(`
-      <div class="chapter-no">${esc(cfg.no)}</div>
+      <div class="chapter-no">${esc(no)}</div>
       <div class="chapter-title">${esc(cfg.title)}</div>
-      <ul class="bg-list">${cfg.rules.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-      <button class="btn" data-act="bossStart">開始</button>`, 'night');
+      ${cfg.intro ? `<p class="boss-intro">${esc(cfg.intro)}</p>` : ''}
+      <div class="howto">
+        <div class="howto-head"><b>怎麼玩</b>${time ? `<span>⏱ ${esc(time)}</span>` : ''}</div>
+        <ol>${cfg.howto.map((s) => `<li><span class="howto-icon" aria-hidden="true">${esc(s.icon)}</span><span>${esc(s.text)}</span></li>`).join('')}</ol>
+      </div>
+      <button class="btn" data-act="bossStart">開始</button>`, cfg.theme);
+  }
+
+  // 夜奶節奏戰：寶寶一哭就點，睡眠條往下掉（上野：無償勞動沒有下班時間）
+  BOSSES.nightFeed = (cfg) => new Promise((resolve) => {
+    bossIntro(cfg, () => run(), { time: `約 ${cfg.seconds} 秒` });
 
     function run() {
       const DURATION = (cfg.seconds || 30) * 1000; // 整段時間＝晚上 11 點到早上 6 點
@@ -1181,12 +1190,7 @@
 
   // 24 小時俄羅斯方塊：照顧的方塊塞滿一天，運動怎麼轉都塞不進去（上野：第二次妥協）
   BOSSES.tetris = (cfg) => new Promise((resolve) => {
-    actions.bossStart = () => run();
-    screen(`
-      <div class="chapter-no">${esc(cfg.no)}</div>
-      <div class="chapter-title">${esc(cfg.title)}</div>
-      <ul class="bg-list">${cfg.rules.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-      <button class="btn" data-act="bossStart">開始</button>`, 'day');
+    bossIntro(cfg, () => run(), { time: `每個方塊 ${cfg.pieceSeconds} 秒` });
 
     function run() {
       const myRun = runId;
@@ -1385,12 +1389,7 @@
   // 聚餐視線閃躲：視線一亮就選一種方式擋，擋越多呼吸越少（高夫曼：可見性、掩飾）
   BOSSES.gaze = (cfg) => new Promise((resolve) => {
     const scene = S.flags.backToWork ? cfg.work : cfg.family;
-    actions.bossStart = () => run();
-    screen(`
-      <div class="chapter-no">${esc(cfg.no)}・${esc(scene.title)}</div>
-      <div class="chapter-title">${esc(cfg.title)}</div>
-      <ul class="bg-list">${cfg.rules.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-      <button class="btn" data-act="bossStart">開始</button>`, 'dusk');
+    bossIntro(cfg, () => run(), { no: `${cfg.no}・${scene.title}`, time: `約 ${cfg.seconds} 秒` });
 
     function run() {
       const myRun = runId;
@@ -1507,12 +1506,7 @@
 
   // 推播打地鼠：要點小小的 ✕ 才關得掉，點到廣告就是購買（鄭斐文：健康工業集團；上野：市場吃掉外部）
   BOSSES.whack = (cfg) => new Promise((resolve) => {
-    actions.bossStart = () => run();
-    screen(`
-      <div class="chapter-no">${esc(cfg.no)}</div>
-      <div class="chapter-title">${esc(cfg.title)}</div>
-      <ul class="bg-list">${cfg.rules.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-      <button class="btn" data-act="bossStart">開始</button>`, 'neon');
+    bossIntro(cfg, () => run(), { time: `約 ${cfg.seconds} 秒` });
 
     function run() {
       const myRun = runId;

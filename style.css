@@ -249,6 +249,20 @@ button { font: inherit; color: inherit; }
 .bg-list li { position: relative; padding-left: 16px; margin-bottom: 10px; }
 .bg-list li::before { content: ""; position: absolute; left: 0; top: .7em; width: 6px; height: 6px; border-radius: 50%; background: var(--pink); }
 
+/* Boss 開始前的「怎麼玩」 */
+.boss-intro { max-width: 320px; margin: -6px 0 14px; font-size: 15px; line-height: 1.6; opacity: .85; }
+.howto {
+  width: 100%; max-width: 330px; padding: 12px 14px 4px; border-radius: 16px; text-align: left;
+  background: rgba(255, 143, 184, .14); border: 1px solid rgba(255, 143, 184, .35);
+}
+.howto-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.howto-head b { font-size: 15px; color: var(--pink-deep); letter-spacing: 2px; }
+.howto-head span { font-size: 12.5px; padding: 2px 10px; border-radius: 99px; background: rgba(255, 143, 184, .22); }
+.howto ol { list-style: none; }
+.howto li { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14.5px; line-height: 1.55; }
+.howto-icon { flex: none; width: 26px; text-align: center; font-size: 19px; line-height: 1.2; font-weight: 700; }
+.overlay.night .howto-head b, .overlay.dusk .howto-head b, .overlay.neon .howto-head b { color: #ffb3cf; }
+
 .end-title { font-size: 26px; font-weight: 800; margin: 8px 0 14px; }
 .end-text { font-size: 16px; line-height: 1.75; max-width: 320px; }
 .app-push {
