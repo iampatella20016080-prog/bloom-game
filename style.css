@@ -488,6 +488,10 @@ button { font: inherit; color: inherit; }
   width: 46px; height: min(36vh, 280px); margin-top: -4px; clip-path: polygon(35% 0, 65% 0, 100% 100%, 0 100%);
   background: linear-gradient(180deg, rgba(255, 240, 150, .85), rgba(255, 240, 150, 0)); opacity: 0; transition: opacity .15s;
 }
+/* 矮螢幕（iPhone SE 等）光束短一點，下面三顆按鈕才不會被切掉 */
+@media (max-height: 700px) {
+  .gz-beam { height: min(28vh, 280px); }
+}
 .gz-guest.gazing .gz-say, .gz-guest.gazing .gz-beam { opacity: 1; }
 .gz-guest.gazing .gz-face { transform: scale(1.15); }
 .gz-guest.blocked .gz-beam { opacity: .25; }
@@ -767,6 +771,18 @@ button { font: inherit; color: inherit; }
 /* 數值變化的閃動要蓋過上面的抖動 */
 .phone[data-stage] .bmi-panel.down { animation: glow .8s; }
 .phone[data-stage] .bmi-panel.up { animation: shake .45s; }
+
+/* 手機橫拿時畫面太矮，卡片和按鈕會擠在一起，請玩家轉回直的 */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  body::after {
+    content: "📱\A請把手機轉成直的\A這個遊戲要直著玩";
+    white-space: pre; text-align: center;
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--cream); color: var(--ink);
+    font-size: 20px; font-weight: 700; line-height: 1.8;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition-duration: .01s !important; }
