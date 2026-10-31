@@ -27,7 +27,7 @@
   let replyTimer = 0;
   let presenter = false; // 報告者模式（網址加 ?menu）
   let runId = 0;         // 每次重新開始就 +1，讓還在跑的 Boss 停下來
-  let full = false;      // 完整版（網址加 ?full）：顯示標了 extra 的卡片、Boss 的每一張理論卡
+  let full = true;       // 完整版（預設）：顯示標了 extra 的卡片、Boss 的每一張理論卡；網址加 ?short 變成約 8 分鐘的精簡版
   let stage = 0;         // 可愛逐漸崩壞：0～3 是第幾章，4 是 App 當機
   let paintSound = () => {}; // 啟動時才接上頂欄的音效按鈕
 
@@ -90,8 +90,19 @@
         noise(0.4, { vol: 0.04, cutoff: 3000, at: 0.1 });
       },
     };
+    // 手機震動：只有 Android 的瀏覽器支援（iPhone／iPad 沒有），沒有聲音時也會震，所以只用在重要的時刻
+    const haptics = { good: 14, bad: 30, coin: [18, 40, 18], cry: 24, crash: [60, 40, 140], glitch: [30, 20, 30, 20, 70], flip: 12 };
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const buzz = (name) => {
+      if (reduce || !haptics[name] || !navigator.vibrate) return;
+      if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return; // 還沒點過畫面，瀏覽器不准震
+      navigator.vibrate(haptics[name]);
+    };
     return {
-      play(name) { try { sfx[name]?.(); } catch { /* 不支援 Web Audio 的瀏覽器就安靜 */ } },
+      play(name) {
+        try { sfx[name]?.(); } catch { /* 不支援 Web Audio 的瀏覽器就安靜 */ }
+        try { buzz(name); } catch { /* 不支援震動就略過 */ }
+      },
       get on() { return on; },
       toggle() {
         on = !on;
@@ -568,12 +579,14 @@
   };
 
   // 一章的卡片滑完 → Boss → 章節結束
-  async function afterCards() {
+  async function afterCards(only = null) {
     hideReply();
     S.busy = true;
-    const bossId = chapter().boss;
-    if (bossId && BOSSES[bossId]) {
+    const bossIds = only ? [only] : [].concat(chapter().boss || []);
+    for (const bossId of bossIds) {
+      if (!BOSSES[bossId]) continue;
       const cfg = D.bosses[bossId];
+      if (cfg.extra && !full) continue; // 精簡版跳過完整版限定的 Boss
       const result = await BOSSES[bossId](cfg);
       S.last = result.vars;
       S.record[bossId] = result.vars;
@@ -922,7 +935,7 @@
         <button data-act="menuIntro">開場：「誰訂的 180 天？」</button>
         ${D.chapters.map((ch, n) => `
           <button data-act="menuChapter" data-n="${n}">${esc(ch.no)}・${esc(ch.title)}</button>
-          ${ch.boss ? `<button class="sub" data-act="menuBoss" data-n="${n}">Boss：${esc(D.bosses[ch.boss].title)}</button>` : ''}`).join('')}
+          ${[].concat(ch.boss || []).map((b) => `<button class="sub" data-act="menuBoss" data-n="${n}" data-b="${b}">Boss：${esc(D.bosses[b].title)}</button>`).join('')}`).join('')}
         <div class="menu-label">結局示範（App 當機 → 後台 → 結局 → 重寫 App）</div>
         ${['hidden', 'reach', 'crash', 'fail'].map((e) => `
           <button class="sub" data-act="menuFinale" data-e="${e}">${esc(D.endings[e].label)}：${esc(D.endings[e].title.replace('{crashes}', '3'))}</button>`).join('')}
@@ -934,7 +947,7 @@
   };
   actions.menuIntro = () => { resetGame(0); actions.splash(); };
   actions.menuChapter = (ds) => { resetGame(+ds.n); actions.chapterTitle(); };
-  actions.menuBoss = (ds) => { resetGame(+ds.n); afterCards(); };
+  actions.menuBoss = (ds) => { resetGame(+ds.n); afterCards(ds.b); };
 
   // 理論卡圖鑑：報告時直接投影當文獻討論。玩家玩完後只看得到自己收集到的卡
   actions.deck = () => {
@@ -1037,6 +1050,109 @@
       <button class="btn" data-act="bossStart">開始</button>`, cfg.theme);
   }
 
+  // 月子餐兩難：一天五餐，婆婆要你多喝湯，App 只准吃 1200 大卡。兩邊的要求加起來沒有解（鄭斐文：專家說法互相矛盾）
+  BOSSES.mealDilemma = (cfg) => new Promise((resolve) => {
+    bossIntro(cfg, () => run(), { time: `${cfg.meals.length} 餐，每餐 ${cfg.mealSeconds} 秒` });
+
+    function run() {
+      const myRun = runId;
+      const MEAL_MS = cfg.mealSeconds * 1000;
+      let idx = 0, cal = 0, milk = 0, eaten = 0, skipped = 0;
+      screen(`
+        <div class="ml">
+          <div class="ml-top"><b>${esc(cfg.title)}</b><span id="mlStep"></span></div>
+          <div class="ml-meter"><span>🌸 App 熱量</span><div class="bar"><i id="mlCal"></i></div><em id="mlCalTxt"></em></div>
+          <div class="ml-meter"><span>🍼 奶量</span><div class="bar"><i id="mlMilk"></i></div><em id="mlMilkTxt"></em></div>
+          <div class="ml-voices">
+            <div class="ml-say mil"><b>👵 婆婆</b><span id="mlMil"></span></div>
+            <div class="ml-say app"><b>🌸 小綻</b><span id="mlApp"></span></div>
+          </div>
+          <div class="ml-dishes" id="mlDishes"></div>
+          <div class="bar ml-timer"><i id="mlTimer"></i></div>
+          <div class="ml-msg" id="mlMsg" aria-live="polite"></div>
+        </div>`, 'day boss');
+
+      const $$ = (id) => document.getElementById(id);
+      const calBar = $$('mlCal'), milkBar = $$('mlMilk'), msg = $$('mlMsg'), timer = $$('mlTimer');
+      const say = (s) => { msg.textContent = s; msg.classList.remove('pop'); void msg.offsetWidth; msg.classList.add('pop'); };
+
+      function paint() {
+        const calPct = Math.min(100, cal / cfg.cap * 100), milkPct = Math.min(100, milk / cfg.target * 100);
+        calBar.style.width = `${calPct}%`;
+        calBar.style.background = cal > cfg.cap ? '#ff4d6a' : '#ff8fb8';
+        milkBar.style.width = `${milkPct}%`;
+        milkBar.style.background = '#5cc8a8';
+        $$('mlCalTxt').textContent = `${cal}／${cfg.cap}`;
+        $$('mlMilkTxt').textContent = `${milk}／${cfg.target}`;
+      }
+
+      let timerId = 0, startAt = 0;
+      function nextMeal() {
+        if (myRun !== runId) return;
+        if (idx >= cfg.meals.length) return finish();
+        const m = cfg.meals[idx];
+        $$('mlStep').textContent = `${m.name}（${idx + 1}／${cfg.meals.length}）`;
+        $$('mlMil').textContent = m.mil;
+        $$('mlApp').textContent = m.app;
+        $$('mlDishes').innerHTML = m.dishes.map((d, i) => `<button class="ml-dish" data-i="${i}"><span class="ml-ic">${esc(d.icon)}</span><b>${esc(d.name)}</b><small>${d.cal} 大卡</small></button>`).join('');
+        let settled = false;
+        const settle = (dish) => {
+          if (settled || myRun !== runId) return;
+          settled = true;
+          cancelAnimationFrame(timerId);
+          if (dish) {
+            eaten++; cal += dish.cal; milk += dish.milk;
+            Sound.play(cal > cfg.cap ? 'bad' : 'tap');
+            say(cal > cfg.cap ? cfg.over : `${dish.icon} ${dish.name}`);
+          } else {
+            skipped++;
+            Sound.play('bad');
+            say(cfg.skipped);
+          }
+          paint();
+          idx++;
+          setTimeout(nextMeal, 700);
+        };
+        $$('mlDishes').onclick = (e) => {
+          const b = e.target.closest('.ml-dish');
+          if (b) settle(m.dishes[+b.dataset.i]);
+        };
+        startAt = performance.now();
+        const frame = (now) => {
+          if (settled || myRun !== runId) return;
+          const p = Math.min(1, (now - startAt) / MEAL_MS);
+          timer.firstElementChild.style.width = `${(1 - p) * 100}%`;
+          if (p >= 1) return settle(null);
+          timerId = requestAnimationFrame(frame);
+        };
+        timerId = requestAnimationFrame(frame);
+      }
+
+      function finish() {
+        const over = cal > cfg.cap, enough = milk >= cfg.target;
+        const vars = { cal, cap: cfg.cap, milk, target: cfg.target, eaten, skipped, over: over ? cal - cfg.cap : 0 };
+        vars.verdict = !over && enough ? cfg.verdictBoth : over && !enough ? cfg.verdictNone : over ? cfg.verdictOver : cfg.verdictMilk;
+        setTimeout(() => {
+          if (myRun !== runId) return;
+          resolve({
+            effects: {
+              baby: clamp(Math.round((milk - 20) / 2), -8, 8),
+              bmi: clamp(-Math.round((1800 - cal) / 250), -6, 4),
+              mood: over ? -4 : 0,
+            },
+            hours: {},
+            text: `${fill(cfg.result, vars)} ${cfg.note}`,
+            vars,
+            app: over ? cfg.appOver : cfg.appOk,
+          });
+        }, 900);
+      }
+
+      paint();
+      nextMeal();
+    }
+  });
+
   // 夜奶節奏戰：寶寶一哭就點，睡眠條往下掉（上野：無償勞動沒有下班時間）
   BOSSES.nightFeed = (cfg) => new Promise((resolve) => {
     bossIntro(cfg, () => run(), { time: `約 ${cfg.seconds} 秒` });
@@ -1079,7 +1195,7 @@
       const cries = [];
       for (let t = 1400; t < DURATION - CRY; t += 2300 + Math.random() * 1300) cries.push({ t, done: false });
 
-      let sleep = 100, me = 0, partnerN = 0, perfect = 0, missed = 0;
+      let sleep = 100, me = 0, partnerN = 0, perfect = 0, missed = 0, streak = 0;
       let active = null;
       let pushShown = false;
       const t0 = performance.now();
@@ -1095,11 +1211,11 @@
         const isPerfect = CRY - elapsed <= PERFECT;
         active.by = 'me';
         me++;
-        if (isPerfect) perfect++;
+        if (isPerfect) { perfect++; streak++; } else streak = 0;
         sleep -= isPerfect ? 7 : 12;
         face.textContent = '🍼';
         Sound.play(isPerfect ? 'good' : 'tap');
-        say(isPerfect ? '完美安撫！' : '安撫中……');
+        say(isPerfect ? (streak >= 2 ? `完美安撫 ×${streak}！` : '完美安撫！') : '安撫中……');
       });
 
       function tick(now) {
@@ -1135,7 +1251,7 @@
         // 畫面卡頓（切到背景、螢幕暗掉）時，已經過去的哭聲直接算沒接到
         if (!active) {
           for (const c of cries) {
-            if (!c.started && t >= c.t + CRY) { c.started = c.done = true; missed++; sleep -= 6; }
+            if (!c.started && t >= c.t + CRY) { c.started = c.done = true; missed++; streak = 0; sleep -= 6; }
           }
         }
 
@@ -1145,7 +1261,7 @@
           ring.style.opacity = active.by ? 0 : 1;
           if (p >= 1) {
             if (!active.by) {
-              missed++;
+              missed++; streak = 0;
               sleep -= 6;
               say('寶寶哭得更大聲了');
             }
@@ -1830,7 +1946,7 @@
   //   ?boss=1   直接玩第 1 章的 Boss
   //   ?skip     跳過開場
   //   ?nosend   玩完不送出全班數據（測試用）
-  //   ?full     完整版：顯示所有卡片和每一張理論卡（預設是給同學的 8 分鐘精簡版）
+  //   ?short    精簡版：跳過標了 extra 的卡片，約 8 分鐘（預設是完整版，時間不限）
   //   ?timer    右上角顯示碼表，彩排時計時用
   //   ?finale=hidden|reach|crash|fail  直接看某一種結局（用示範數字，不送全班數據）
   $('#brandFlower').innerHTML = flowerSVG();
@@ -1847,7 +1963,7 @@
   paintSound();
   const q = new URLSearchParams(location.search);
   const chOf = (v) => clamp((parseInt(v, 10) || 1) - 1, 0, D.chapters.length - 1);
-  full = q.has('full');
+  full = !q.has('short');
   if (q.has('timer')) {
     const badge = document.createElement('div');
     badge.className = 'play-timer';
