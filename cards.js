@@ -324,6 +324,18 @@ window.BLOOM_DATA = {
           theory: '上野：勞動力邊緣化、雙重限制（10.7）',
         },
         {
+          type: 'article', who: 'mascot', day: 41,
+          article: {
+            title: '育嬰留停津貼：投保薪資 8 成，父母可以同時請領',
+            source: '勞動部〈照顧寶貝不缺席，育嬰留職停薪津貼助父母安心陪伴子女成長！〉',
+            summary: '津貼以前 6 個月平均月投保薪資的 60% 計算，另加發 20% 薪資補助，合計 80%，每一子女最長 6 個月。父母可以同時請領，兩人共可申請最長 12 個月。需要就業保險年資滿 1 年，並在子女滿 3 歲前辦理育嬰留停。',
+          },
+          quip: { who: 'partner', text: '所以我們兩個一起休，也是領得到的。' },
+          left:  { label: '略過' },
+          right: { label: '收藏文章', effects: { mood: -2 } },
+          theory: '台灣案例：育嬰留停津貼（勞動部）',
+        },
+        {
           who: 'mascot', day: 42,
           text: '小祕訣：餵母奶也能幫助瘦身喔！再忙也要堅持親餵 🍼',
           left:  { label: '我想改成瓶餵', effects: { mood: 6, baby: -4, family: -4 },
@@ -355,6 +367,18 @@ window.BLOOM_DATA = {
                    reply: { who: 'mascot', text: '時間是擠出來的喔！成功的媽媽都 5 點起床 ☀️' } },
           right: { label: '我晚上擠一點時間', effects: { mood: -10, bmi: -3 } },
           theory: '鄭斐文：把問題個人化成意志力（p.61）',
+        },
+        {
+          type: 'article', who: 'mascot', day: 50,
+          article: {
+            title: '女性每天無酬照顧 3.03 小時，有伴侶的高達 4.41 小時',
+            source: '中央社，2026 年 1 月 4 日，引述衛福部 113 年「15 至 64 歲女性生活狀況調查」',
+            summary: '女性平均每天無酬照顧 3.03 小時（做家務 1.51 小時、照顧家人等 1.47 小時）。有配偶或同居伴侶的女性高達 4.41 小時，其中 93.9% 需要做家務，每天平均 2.13 小時。',
+          },
+          quip: { who: 'partner', text: '……原來你每天做的，比我想的多很多。' },
+          left:  { label: '略過' },
+          right: { label: '收藏文章', effects: { mood: -2 } },
+          theory: '台灣案例：女性無酬照顧時間（衛福部 2025）',
         },
         {
           who: 'manager', day: 53,
@@ -472,6 +496,18 @@ window.BLOOM_DATA = {
           theory: '高夫曼：連帶污名，家人也一起覺得丟臉（p.30）',
         },
         {
+          type: 'article', who: 'mascot', day: 82,
+          article: {
+            title: '女性平均時薪是男性的 83.9%，性別薪資差距 16.1%',
+            source: '經濟日報，2026 年 5 月 31 日，引述主計總處「受僱員工薪資調查」2025 年初步統計',
+            summary: '2025 年女性平均時薪 340 元，男性 405 元，性別薪資差距 16.1%。這是全體受僱員工的統計，不是只看生過孩子的女性。',
+          },
+          quip: { who: 'coworker', text: '我們公司的差距，應該沒這麼大吧？' },
+          left:  { label: '略過' },
+          right: { label: '收藏文章', effects: { mood: -2 } },
+          theory: '台灣案例：性別薪資差距（主計總處 2025）',
+        },
+        {
           who: 'manager', day: 85, when: { backToWork: 1 },
           text: '這次的升遷名單……我們想說你家裡比較忙，就先不放你了，你應該能理解吧？',
           left:  { label: '我可以勝任', effects: { mood: -2, family: -2 },
@@ -568,6 +604,18 @@ window.BLOOM_DATA = {
           theory: '台灣：已婚婦女 22.7% 曾因生育離職（衛福部 2019）',
         },
         // 支線：第 2 章要求過育嬰留停一人請一半
+        {
+          type: 'article', who: 'mascot', day: 145,
+          article: {
+            title: '家人關心支持產後媽咪，政府亦將提供專業關懷，幫助媽咪揮別產後憂鬱',
+            source: '衛生福利部（國民健康局新聞稿），2011 年 5 月 6 日',
+            summary: '約有三到八成的媽媽，於產後 3–4 天內會發生產後情緒低落；約有一成的媽媽，於產後 6 週內會發生產後憂鬱症。',
+          },
+          quip: { who: 'nurse', text: '情緒低落很常見，不是你的意志力問題。撐不住，要跟醫師說喔。' },
+          left:  { label: '略過' },
+          right: { label: '收藏文章', effects: { mood: 2 } },
+          theory: '台灣案例：產後情緒與醫療化（國民健康局 2011）',
+        },
         {
           who: 'partner', day: 150, when: { shareLeave: 1 },
           text: '我跟主管說想請育嬰留停，他笑說「男人請什麼育嬰假」……',
@@ -1017,7 +1065,7 @@ window.BLOOM_DATA = {
     // value 裡的 {…} 會換成玩家自己的數字；basis 是這個指標的根據
     metrics: [
       { id: 'sleep', icon: '😴', label: '睡眠', value: '第 2 章那一天，你睡了 {sleep} 小時', basis: '上野：再生產勞動沒有下班時間' },
-      { id: 'share', icon: '🤝', label: '伴侶分擔', value: '照顧時數：你 {hoursMe} 小時、伴侶 {hoursPartner} 小時', basis: '上野：第二次妥協；台灣 2025 年申請育嬰留停的男性只占 27.8%' },
+      { id: 'share', icon: '🤝', label: '伴侶分擔', value: '照顧時數：你 {hoursMe} 小時、伴侶 {hoursPartner} 小時', basis: '上野：第二次妥協；有配偶或同居伴侶的女性，每天無酬照顧 4.41 小時（衛福部 113 年調查）；2025 年申請育嬰留停的男性只占 27.8%' },
       { id: 'childcare', icon: '🏫', label: '公共托育', value: '這 180 天裡，遊戲沒有出現過任何托育資源', basis: '上野：照顧被推給家庭這個市場的「外部」' },
       { id: 'support', icon: '💬', label: '支持網絡', value: '你接住了 {help} 則真正關心你的訊息', basis: '高夫曼：自己人與知情者（p.23–37）' },
       { id: 'lactation', icon: '🍼', label: '哺集乳室', value: '哺乳要找會議室、找廁所，還被說「遮一下」', basis: '公共場所母乳哺育條例（2019 修法）' },

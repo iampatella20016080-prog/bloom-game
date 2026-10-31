@@ -93,7 +93,11 @@
     // 手機震動：只有 Android 的瀏覽器支援（iPhone／iPad 沒有），沒有聲音時也會震，所以只用在重要的時刻
     const haptics = { good: 14, bad: 30, coin: [18, 40, 18], cry: 24, crash: [60, 40, 140], glitch: [30, 20, 30, 20, 70], flip: 12 };
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const buzz = (name) => { if (!reduce && haptics[name] && navigator.vibrate) navigator.vibrate(haptics[name]); };
+    const buzz = (name) => {
+      if (reduce || !haptics[name] || !navigator.vibrate) return;
+      if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return; // 還沒點過畫面，瀏覽器不准震
+      navigator.vibrate(haptics[name]);
+    };
     return {
       play(name) {
         try { sfx[name]?.(); } catch { /* 不支援 Web Audio 的瀏覽器就安靜 */ }
