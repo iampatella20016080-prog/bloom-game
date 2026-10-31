@@ -160,7 +160,7 @@ window.BLOOM_DATA = {
         // 支線：開了 1200 大卡
         {
           who: 'nurse', day: 8, when: { diet1200: 1 },
-          text: '寶寶這兩天尿布比較少。你是不是吃太少了？哺乳期要多吃一點喔。',
+          text: '寶寶這兩天尿量比較少。你是不是吃太少了？哺乳期要多吃一點喔。',
           left:  { label: 'App 說要控制熱量', effects: { baby: -8, bmi: -2 },
                    reply: { who: 'nurse', text: 'App 又不會幫你餵奶……' } },
           right: { label: '好，我多吃一點', effects: { baby: 6, bmi: 4 },
