@@ -380,6 +380,23 @@ window.BLOOM_DATA = {
           right: { label: '收藏文章', effects: { mood: -2 } },
           theory: '台灣案例：女性無酬照顧時間（衛福部 2025）',
         },
+        // 支線：第 44 天遠端參加過會議
+        {
+          who: 'coworker', day: 51, when: { workedOnLeave: 1 },
+          text: '主管說你上次遠端開會「很有責任感」，問你下週能不能再線上看一下進度？',
+          left:  { label: '我還在產假，這週不行', effects: { mood: 3 },
+                   reply: { who: 'coworker', text: '好～我跟他說。（他剛剛臉色不太好看）' } },
+          right: { label: '好，我看一下', effects: { mood: -8, baby: -4 }, flags: { workedOnLeave: 1 } },
+          theory: '上野：雙重負擔（10.6）',
+        },
+        // 支線：第 40 天自己請了育嬰留停
+        {
+          who: 'partner', day: 52, when: { myLeave: 1 },
+          text: '育嬰津貼是投保薪資的 8 成。你請假的這段時間，家裡的收入少了兩成，我們要重算預算。',
+          left:  { label: '那我提早回去上班', effects: { mood: -6, baby: -4, family: 2 }, flags: { backEarly: 1 } },
+          right: { label: '我們一起省一點', effects: { mood: -2, family: 4 } },
+          theory: '台灣案例：育嬰留停津貼（勞動部）',
+        },
         {
           who: 'manager', day: 53,
           text: '產假快結束了吧？我們很需要你回來。不過你也可以先請育嬰留停，部門會先找人頂。',
@@ -488,6 +505,14 @@ window.BLOOM_DATA = {
                    reply: { who: 'mascot', text: '你的辣媽指數：62 分，打敗了 41% 的媽媽 🌸' } },
           theory: '鄭斐文：醫學與男性凝視下的「最有吸引力」（p.42）',
         },
+        // 支線：第 65 天說了公司應該要有哺集乳室
+        {
+          who: 'coworker', day: 78, when: { speakUp: 1 },
+          text: '人資說「會評估哺集乳室」，但預算還沒過。你先用會議室？要自己去排時間喔。',
+          left:  { label: '我再去跟人資談', effects: { mood: -3, family: 0 } },
+          right: { label: '先用會議室', effects: { mood: -4 }, hours: { me: 2 } },
+          theory: '高夫曼：自己人與知情者（p.23–37）',
+        },
         {
           who: 'mil', day: 80,
           text: '親戚都說你胖了，我都幫你說是剛生完啦。',
@@ -521,6 +546,15 @@ window.BLOOM_DATA = {
           left:  { label: '我想提早回去', effects: { mood: -4, baby: -4 }, flags: { backEarly: 1 } },
           right: { label: '……好，我知道了', effects: { mood: -6 } },
           theory: '上野：中斷再就業的代價（11.5）',
+        },
+        // 支線：第 85 天選了提早回去上班
+        {
+          who: 'manager', day: 87, when: { backEarly: 1 },
+          text: '你提早回來，很好。下週的專案，晚上的客戶電話就交給你。',
+          left:  { label: '我晚上要顧寶寶，不行', effects: { mood: 2, family: 2 },
+                   reply: { who: 'manager', text: '……我再想想。（他好像不太高興）' } },
+          right: { label: '好，我來', effects: { mood: -8, baby: -4 }, hours: { me: 3 } },
+          theory: '上野：雙重負擔（10.6）',
         },
         {
           who: 'mascot', day: 88,
@@ -563,6 +597,14 @@ window.BLOOM_DATA = {
           left:  { label: '略過' },
           right: { label: '收藏文章', effects: { mood: -1 } },
           theory: '上野：市場吃掉自己的外部（10.2）',
+        },
+        // 支線：第 120 天報名了最後衝刺方案
+        {
+          who: 'nurse', day: 124, when: { sprint: 1 },
+          text: '你報名的衝刺方案要每天打卡三次，還要記錄熱量。你最近有睡覺嗎？',
+          left:  { label: '先睡覺，打卡晚點', effects: { mood: 4, bmi: 2 } },
+          right: { label: '照做，不能放棄', effects: { mood: -8, bmi: -3 } },
+          theory: '鄭斐文：把問題個人化成意志力（p.61）',
         },
         {
           who: 'partner', day: 125, extra: true,
@@ -996,7 +1038,8 @@ window.BLOOM_DATA = {
       button: '關掉後台',
     },
     // 2026-10-24 平衡測試（模擬 4000 場、精簡版）：一般玩家（6 成接受）約 隱藏 8%・達標 36%・崩潰 33%・失敗 24%
-    hiddenRefuse: 7,   // 拒絕 App 幾次以上，才可能觸發隱藏結局
+    hiddenRefuse: 7,   // 拒絕 App 幾次以上，才可能觸發隱藏結局（沒有分工的話是「拒絕結局」）
+    sharedRatio: 2.5,  // 有分擔夜奶或一人請一半，而且你的照顧時數是伴侶的幾倍以內，是「分擔結局」
     crashThreshold: 3, // 崩潰幾次以上算「崩潰結局」
   },
 
@@ -1030,6 +1073,28 @@ window.BLOOM_DATA = {
         text: '國健署 2025 年起推動產後健康照護：產後媽媽可以用《孕媽咪健康手冊》裡的 QR code 做愛丁堡產後憂鬱量表自我評估，再由醫師提供諮詢或轉介。',
         help: '孕產婦關懷專線 0800-870-870（週一至週五 8–18 時）・衛福部安心專線 1925（24 小時免付費）',
       },
+    },
+    shared: {
+      label: '分擔結局',
+      title: '兩個人的 180 天',
+      text: '你們一起分擔了夜奶和育嬰假。這 180 天，你照顧了 {hoursMe} 小時，伴侶 {hoursPartner} 小時，差距比多數人小。但 App 還在，你的 BMI 是 {bmi}。',
+      scene: [
+        { who: 'partner', text: '這半年很累，但至少不是你一個人。' },
+        { who: 'mil', text: '你們年輕人分工得不錯嘛，我以前都是自己來。' },
+        { who: 'nurse', text: '有人一起分擔，產後恢復會比較順。這個要記得跟朋友說。' },
+      ],
+      app: '你們的「分擔指數」……抱歉，我們沒有這個指標 🌸',
+    },
+    rebel: {
+      label: '拒絕結局',
+      title: '你拒絕了 {refused} 次',
+      text: '你不再相信那條 180 天的線，也很少再照 App 說的做。但家裡的分工沒有變：這 180 天，你照顧了 {hoursMe} 小時，伴侶 {hoursPartner} 小時。',
+      scene: [
+        { who: 'partner', text: '你最近好像不太聽 App 的話了。這樣也好……' },
+        { who: 'mil', text: '孩子都是你在帶，你自己也要顧好身體啦。' },
+        { who: 'nurse', text: '不被 App 牽著走很好。但別一個人撐，可以和伴侶重新討論分工。' },
+      ],
+      app: '偵測到你關閉了大部分提醒。我們會想念你 🌸',
     },
     crash: {
       label: '崩潰結局',
@@ -1090,10 +1155,37 @@ window.BLOOM_DATA = {
     theory: 'zhengResist',
   },
 
+  // 成就清單：玩完之後在結局分享卡上顯示，解鎖記錄存在這個瀏覽器（不會送出）。
+  //   when.ending         走到這個結局
+  //   when.flags          記下的事至少幾次，例如 { talk: 1 }
+  //   when.crashesMax     崩潰次數不超過這個數
+  //   when.hoursRatioMax  你的照顧時數是伴侶的幾倍以內
+  //   when.record         Boss 結果至少這麼多，例如 { 'nightFeed.perfect': 4 }
+  //   when.recordMax      Boss 結果不超過這麼多，例如 { 'whack.charged': 2 }
+  //   when.theories       收集到的理論卡至少幾張
+  //   when.endingsSeen    在這個瀏覽器看過幾種結局（跨幾次遊玩）
+  achievements: [
+    { id: 'perfectNight', icon: '🌙', title: '完美安撫', desc: '夜奶節奏戰，完美安撫 4 次以上。', when: { record: { 'nightFeed.perfect': 4 } } },
+    { id: 'goodSleep', icon: '😴', title: '睡了一個好覺', desc: '夜奶節奏戰結束時，睡眠還剩 60% 以上。', when: { record: { 'nightFeed.sleep': 60 } } },
+    { id: 'bothPass', icon: '🍲', title: '不可能的任務', desc: '月子餐兩難裡，同時達到奶量目標、又沒超過 App 的熱量上限。', when: { record: { 'mealDilemma.milk': 35 }, recordMax: { 'mealDilemma.over': 0 } } },
+    { id: 'seenLittle', icon: '👀', title: '眼神殺手免疫', desc: '聚餐視線閃躲，被看見 2 次以內。', when: { recordMax: { 'gaze.seen': 2 } } },
+    { id: 'fewCharges', icon: '💳', title: '錢包守住了', desc: '推播打地鼠，被扣款 2 次以內。', when: { recordMax: { 'whack.charged': 2 } } },
+    { id: 'catchCare', icon: '💬', title: '接住關心', desc: '推播打地鼠裡，接住 2 則真正關心你的訊息。', when: { record: { 'whack.help': 2 } } },
+    { id: 'noThanks', icon: '🚫', title: '不吃這一套', desc: '拒絕小綻 10 次以上。', when: { flags: { 'left:mascot': 10 } } },
+    { id: 'speakOut', icon: '🗣️', title: '說出口', desc: '對伴侶說「其實我好累」。', when: { flags: { talk: 1 } } },
+    { id: 'halfHalf', icon: '🤝', title: '一人一半', desc: '提出育嬰留停一人請一半。', when: { flags: { shareLeave: 1 } } },
+    { id: 'fairShare', icon: '⚖️', title: '照顧不再一面倒', desc: '你的照顧時數不到伴侶的 2.5 倍。', when: { hoursRatioMax: 2.5 } },
+    { id: 'noCrash', icon: '🧘', title: '一次都沒崩潰', desc: '180 天裡，數值從沒歸零或爆表。', when: { crashesMax: 0 } },
+    { id: 'allCards', icon: '📚', title: '收齊理論卡', desc: '收集到全部 10 張理論卡。', when: { theories: 10 } },
+    { id: 'allEndings', icon: '🔁', title: '看遍結局', desc: '在這個瀏覽器看過全部 6 種結局（可以分好幾次玩）。', when: { endingsSeen: 6 } },
+  ],
+
   // 結局分享卡的稱號：由上往下，第一個符合的就是你的稱號
   //   when.ending 結局、when.flags 記下的事至少幾次、when.hoursRatio 你的照顧時數是伴侶的幾倍以上、when.crashes 崩潰幾次以上
   titles: [
     { title: '解除安裝者', desc: '你刪掉了 App，也把一部分照顧交還給伴侶。', when: { ending: 'hidden' } },
+    { title: '兩個人的 180 天', desc: '你們一起分擔，沒有讓她一個人撐。', when: { ending: 'shared' } },
+    { title: '不信 App 的人', desc: '你不再照 App 說的做，下一步，是把分工也改掉。', when: { ending: 'rebel' } },
     { title: '最懂事的媳婦', desc: '婆婆的要求，你幾乎都答應了。', when: { flags: { 'right:mil': 3 } } },
     { title: 'App 模範生', desc: '小綻說什麼，你都照做。', when: { flags: { 'right:mascot': 7 } } },
     { title: '什麼都自己扛', desc: '你的照顧時數是伴侶的 5 倍以上。', when: { hoursRatio: 5 } },

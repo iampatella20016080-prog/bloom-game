@@ -703,10 +703,16 @@
   };
 
   // ---------- 結局：App 當機 → 後台 → 結局 → 重寫 App → 結局分享卡 ----------
+  // 你的照顧時數是伴侶的幾倍（伴侶 0 小時就是無限大）
+  const careRatio = () => (S.hours.partner ? S.hours.me / S.hours.partner : (S.hours.me ? Infinity : 0));
+
   function pickEnding() {
     const f = S.flags;
-    if (f.talk && (sharing() || f.shareLeave) && (f['left:mascot'] || 0) >= D.finale.hiddenRefuse) return 'hidden';
+    const refused = f['left:mascot'] || 0;
+    if (f.talk && (sharing() || f.shareLeave) && refused >= D.finale.hiddenRefuse) return 'hidden';
     if (bmiOf(S.stats.bmi) <= D.settings.bmiGoal) return 'reach';
+    if (refused >= D.finale.hiddenRefuse) return 'rebel';                         // 不信 App，但分工沒變
+    if ((sharing() || f.shareLeave) && careRatio() <= D.finale.sharedRatio) return 'shared'; // 兩個人一起撐
     if (S.crashes.length >= D.finale.crashThreshold) return 'crash';
     return 'fail';
   }
@@ -868,7 +874,7 @@
   }
 
   function pickTitle() {
-    const ratio = S.hours.partner ? S.hours.me / S.hours.partner : (S.hours.me ? Infinity : 0);
+    const ratio = careRatio();
     const ok = (w) => (!w.ending || w.ending === S.ending)
       && (!w.crashes || S.crashes.length >= w.crashes)
       && (!w.hoursRatio || ratio >= w.hoursRatio)
@@ -876,11 +882,54 @@
     return D.titles.find((t) => ok(t.when)) || D.titles[D.titles.length - 1];
   }
 
+  // ---------- 成就清單：解鎖記錄只存在這個瀏覽器，不會送出 ----------
+  const PROGRESS_KEY = 'bloom-progress';
+  const loadProgress = () => {
+    try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {}; } catch { return {}; }
+  };
+  const saveProgress = (p) => {
+    try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch { /* 無痕模式就只在這一局有效 */ }
+  };
+  // Boss 結果的數字（'nightFeed.perfect' → 5）；沒玩過那個 Boss 就是 NaN
+  const recordNum = (path) => {
+    const [boss, key] = path.split('.');
+    const v = S.record[boss]?.[key];
+    return typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/,/g, ''));
+  };
+  function achieved(a, prog) {
+    const w = a.when || {};
+    if (w.ending && w.ending !== S.ending) return false;
+    if (!Object.entries(w.flags || {}).every(([k, n]) => (S.flags[k] || 0) >= n)) return false;
+    if (w.crashesMax != null && S.crashes.length > w.crashesMax) return false;
+    if (w.hoursRatioMax != null && !(careRatio() <= w.hoursRatioMax)) return false;
+    if (!Object.entries(w.record || {}).every(([k, n]) => recordNum(k) >= n)) return false;
+    if (!Object.entries(w.recordMax || {}).every(([k, n]) => Number.isFinite(recordNum(k)) && recordNum(k) <= n)) return false;
+    if (w.theories && S.theories.length < w.theories) return false;
+    if (w.endingsSeen && (prog.endings || []).length < w.endingsSeen) return false;
+    return true;
+  }
+  // 算出這一局的成就，並把新解鎖的存起來（報告者示範不存）
+  function achievementsNow() {
+    const prog = loadProgress();
+    const had = new Set(prog.ach || []);
+    const save = !S.demo && !presenter;
+    const endings = new Set(prog.endings || []);
+    if (S.ending) endings.add(S.ending);
+    const view = { ...prog, endings: [...endings] };
+    const list = (D.achievements || []).map((a) => {
+      const got = achieved(a, view);
+      return { a, got: got || had.has(a.id), fresh: got && !had.has(a.id) };
+    });
+    if (save) saveProgress({ ach: list.filter((x) => x.got).map((x) => x.a.id), endings: [...endings] });
+    return list;
+  }
+
   let lastSent = false;
   function shareScreen(sent = lastSent) {
     lastSent = sent;
     const v = finaleVars();
     const t = pickTitle();
+    const achList = achievementsNow();
     const accepted = Object.entries(S.flags).filter(([k]) => k.startsWith('right:')).reduce((s, [, n]) => s + n, 0);
     const rows = [
       `答應了 ${accepted} 個要求（${S.flags['right:mascot'] || 0} 個來自 App）`,
@@ -896,6 +945,13 @@
         <div class="share-title">${esc(t.title)}</div>
         <p class="share-desc">${esc(t.desc)}</p>
         <ul class="share-stats">${rows.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
+      </div>
+      <div class="ach">
+        <div class="ach-head"><b>成就</b><span>${achList.filter((x) => x.got).length}／${achList.length}</span></div>
+        <ul>${achList.map(({ a, got, fresh }) => `<li class="${got ? 'got' : 'lock'}${fresh ? ' fresh' : ''}">
+          <span class="ach-ic">${got ? esc(a.icon) : '🔒'}</span>
+          <span><b>${esc(a.title)}${fresh ? ' <em>新</em>' : ''}</b><small>${esc(a.desc)}</small></span></li>`).join('')}</ul>
+        ${presenter ? '' : '<p class="note">解鎖記錄只存在這個瀏覽器，不會送出。</p>'}
       </div>
       <p class="note">${esc(D.share.note)}</p>
       ${sent ? `<p class="note">${esc(D.intro.sentNote)}</p>` : ''}
@@ -937,7 +993,7 @@
           <button data-act="menuChapter" data-n="${n}">${esc(ch.no)}・${esc(ch.title)}</button>
           ${[].concat(ch.boss || []).map((b) => `<button class="sub" data-act="menuBoss" data-n="${n}" data-b="${b}">Boss：${esc(D.bosses[b].title)}</button>`).join('')}`).join('')}
         <div class="menu-label">結局示範（App 當機 → 後台 → 結局 → 重寫 App）</div>
-        ${['hidden', 'reach', 'crash', 'fail'].map((e) => `
+        ${['hidden', 'shared', 'rebel', 'reach', 'crash', 'fail'].map((e) => `
           <button class="sub" data-act="menuFinale" data-e="${e}">${esc(D.endings[e].label)}：${esc(D.endings[e].title.replace('{crashes}', '3'))}</button>`).join('')}
         <button data-act="deck">理論卡圖鑑（文獻討論）</button>
         <button data-act="results">全班結果（即時）</button>
@@ -1854,6 +1910,7 @@
       { label: '至少崩潰一次', pred: (r) => Number(r.crashes) > 0, tag: `平均 ${avg('crashes').toFixed(1)} 次・媽媽不能 Game Over` },
       { label: '產假後回去上班', pred: (r) => r.leave === '回去上班', tag: '上野：雙重負擔（10.5）' },
       { label: '產假後請育嬰留停', pred: (r) => r.leave === '育嬰留停', tag: '對照：2025 年申請育嬰留停的人約 72% 是女性' },
+      { label: '走到分擔結局（兩個人一起撐）', pred: (r) => r.ending === '分擔結局', tag: '上野：第二次妥協，男性也要變成部分再生產者（10.6）' },
       { label: '找到隱藏結局（解除安裝）', pred: (r) => r.ending === '隱藏結局', tag: '上野：要改變的是物質基礎（4.1）' },
     ];
     const me = avg('hoursMe'), pt = avg('hoursPartner'), top = Math.max(me, pt, 1);
@@ -1948,7 +2005,7 @@
   //   ?nosend   玩完不送出全班數據（測試用）
   //   ?short    精簡版：跳過標了 extra 的卡片，約 8 分鐘（預設是完整版，時間不限）
   //   ?timer    右上角顯示碼表，彩排時計時用
-  //   ?finale=hidden|reach|crash|fail  直接看某一種結局（用示範數字，不送全班數據）
+  //   ?finale=hidden|shared|rebel|reach|crash|fail  直接看某一種結局（用示範數字，不送全班數據）
   $('#brandFlower').innerHTML = flowerSVG();
   const soundBtn = $('#soundBtn');
   paintSound = () => {
