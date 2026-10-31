@@ -575,12 +575,14 @@
   };
 
   // 一章的卡片滑完 → Boss → 章節結束
-  async function afterCards() {
+  async function afterCards(only = null) {
     hideReply();
     S.busy = true;
-    const bossId = chapter().boss;
-    if (bossId && BOSSES[bossId]) {
+    const bossIds = only ? [only] : [].concat(chapter().boss || []);
+    for (const bossId of bossIds) {
+      if (!BOSSES[bossId]) continue;
       const cfg = D.bosses[bossId];
+      if (cfg.extra && !full) continue; // 精簡版跳過完整版限定的 Boss
       const result = await BOSSES[bossId](cfg);
       S.last = result.vars;
       S.record[bossId] = result.vars;
@@ -929,7 +931,7 @@
         <button data-act="menuIntro">開場：「誰訂的 180 天？」</button>
         ${D.chapters.map((ch, n) => `
           <button data-act="menuChapter" data-n="${n}">${esc(ch.no)}・${esc(ch.title)}</button>
-          ${ch.boss ? `<button class="sub" data-act="menuBoss" data-n="${n}">Boss：${esc(D.bosses[ch.boss].title)}</button>` : ''}`).join('')}
+          ${[].concat(ch.boss || []).map((b) => `<button class="sub" data-act="menuBoss" data-n="${n}" data-b="${b}">Boss：${esc(D.bosses[b].title)}</button>`).join('')}`).join('')}
         <div class="menu-label">結局示範（App 當機 → 後台 → 結局 → 重寫 App）</div>
         ${['hidden', 'reach', 'crash', 'fail'].map((e) => `
           <button class="sub" data-act="menuFinale" data-e="${e}">${esc(D.endings[e].label)}：${esc(D.endings[e].title.replace('{crashes}', '3'))}</button>`).join('')}
@@ -941,7 +943,7 @@
   };
   actions.menuIntro = () => { resetGame(0); actions.splash(); };
   actions.menuChapter = (ds) => { resetGame(+ds.n); actions.chapterTitle(); };
-  actions.menuBoss = (ds) => { resetGame(+ds.n); afterCards(); };
+  actions.menuBoss = (ds) => { resetGame(+ds.n); afterCards(ds.b); };
 
   // 理論卡圖鑑：報告時直接投影當文獻討論。玩家玩完後只看得到自己收集到的卡
   actions.deck = () => {
@@ -1043,6 +1045,109 @@
       </div>
       <button class="btn" data-act="bossStart">開始</button>`, cfg.theme);
   }
+
+  // 月子餐兩難：一天五餐，婆婆要你多喝湯，App 只准吃 1200 大卡。兩邊的要求加起來沒有解（鄭斐文：專家說法互相矛盾）
+  BOSSES.mealDilemma = (cfg) => new Promise((resolve) => {
+    bossIntro(cfg, () => run(), { time: `${cfg.meals.length} 餐，每餐 ${cfg.mealSeconds} 秒` });
+
+    function run() {
+      const myRun = runId;
+      const MEAL_MS = cfg.mealSeconds * 1000;
+      let idx = 0, cal = 0, milk = 0, eaten = 0, skipped = 0;
+      screen(`
+        <div class="ml">
+          <div class="ml-top"><b>${esc(cfg.title)}</b><span id="mlStep"></span></div>
+          <div class="ml-meter"><span>🌸 App 熱量</span><div class="bar"><i id="mlCal"></i></div><em id="mlCalTxt"></em></div>
+          <div class="ml-meter"><span>🍼 奶量</span><div class="bar"><i id="mlMilk"></i></div><em id="mlMilkTxt"></em></div>
+          <div class="ml-voices">
+            <div class="ml-say mil"><b>👵 婆婆</b><span id="mlMil"></span></div>
+            <div class="ml-say app"><b>🌸 小綻</b><span id="mlApp"></span></div>
+          </div>
+          <div class="ml-dishes" id="mlDishes"></div>
+          <div class="bar ml-timer"><i id="mlTimer"></i></div>
+          <div class="ml-msg" id="mlMsg" aria-live="polite"></div>
+        </div>`, 'day boss');
+
+      const $$ = (id) => document.getElementById(id);
+      const calBar = $$('mlCal'), milkBar = $$('mlMilk'), msg = $$('mlMsg'), timer = $$('mlTimer');
+      const say = (s) => { msg.textContent = s; msg.classList.remove('pop'); void msg.offsetWidth; msg.classList.add('pop'); };
+
+      function paint() {
+        const calPct = Math.min(100, cal / cfg.cap * 100), milkPct = Math.min(100, milk / cfg.target * 100);
+        calBar.style.width = `${calPct}%`;
+        calBar.style.background = cal > cfg.cap ? '#ff4d6a' : '#ff8fb8';
+        milkBar.style.width = `${milkPct}%`;
+        milkBar.style.background = '#5cc8a8';
+        $$('mlCalTxt').textContent = `${cal}／${cfg.cap}`;
+        $$('mlMilkTxt').textContent = `${milk}／${cfg.target}`;
+      }
+
+      let timerId = 0, startAt = 0;
+      function nextMeal() {
+        if (myRun !== runId) return;
+        if (idx >= cfg.meals.length) return finish();
+        const m = cfg.meals[idx];
+        $$('mlStep').textContent = `${m.name}（${idx + 1}／${cfg.meals.length}）`;
+        $$('mlMil').textContent = m.mil;
+        $$('mlApp').textContent = m.app;
+        $$('mlDishes').innerHTML = m.dishes.map((d, i) => `<button class="ml-dish" data-i="${i}"><span class="ml-ic">${esc(d.icon)}</span><b>${esc(d.name)}</b><small>${d.cal} 大卡</small></button>`).join('');
+        let settled = false;
+        const settle = (dish) => {
+          if (settled || myRun !== runId) return;
+          settled = true;
+          cancelAnimationFrame(timerId);
+          if (dish) {
+            eaten++; cal += dish.cal; milk += dish.milk;
+            Sound.play(cal > cfg.cap ? 'bad' : 'tap');
+            say(cal > cfg.cap ? cfg.over : `${dish.icon} ${dish.name}`);
+          } else {
+            skipped++;
+            Sound.play('bad');
+            say(cfg.skipped);
+          }
+          paint();
+          idx++;
+          setTimeout(nextMeal, 700);
+        };
+        $$('mlDishes').onclick = (e) => {
+          const b = e.target.closest('.ml-dish');
+          if (b) settle(m.dishes[+b.dataset.i]);
+        };
+        startAt = performance.now();
+        const frame = (now) => {
+          if (settled || myRun !== runId) return;
+          const p = Math.min(1, (now - startAt) / MEAL_MS);
+          timer.firstElementChild.style.width = `${(1 - p) * 100}%`;
+          if (p >= 1) return settle(null);
+          timerId = requestAnimationFrame(frame);
+        };
+        timerId = requestAnimationFrame(frame);
+      }
+
+      function finish() {
+        const over = cal > cfg.cap, enough = milk >= cfg.target;
+        const vars = { cal, cap: cfg.cap, milk, target: cfg.target, eaten, skipped, over: over ? cal - cfg.cap : 0 };
+        vars.verdict = !over && enough ? cfg.verdictBoth : over && !enough ? cfg.verdictNone : over ? cfg.verdictOver : cfg.verdictMilk;
+        setTimeout(() => {
+          if (myRun !== runId) return;
+          resolve({
+            effects: {
+              baby: clamp(Math.round((milk - 20) / 2), -8, 8),
+              bmi: clamp(-Math.round((1800 - cal) / 250), -6, 4),
+              mood: over ? -4 : 0,
+            },
+            hours: {},
+            text: `${fill(cfg.result, vars)} ${cfg.note}`,
+            vars,
+            app: over ? cfg.appOver : cfg.appOk,
+          });
+        }, 900);
+      }
+
+      paint();
+      nextMeal();
+    }
+  });
 
   // 夜奶節奏戰：寶寶一哭就點，睡眠條往下掉（上野：無償勞動沒有下班時間）
   BOSSES.nightFeed = (cfg) => new Promise((resolve) => {

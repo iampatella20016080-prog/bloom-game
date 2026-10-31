@@ -95,7 +95,7 @@ window.BLOOM_DATA = {
         '台灣習俗「坐月子」：產後約一個月休養、進補，照顧多半落在婆婆、娘家媽媽或付費的月子中心身上。',
         '同一時間，你手機裡的身材管理 App 已經開始倒數。',
       ],
-      boss: 'nightFeed',
+      boss: ['mealDilemma', 'nightFeed'],
       cards: [
         {
           who: 'mascot', day: 1,
@@ -617,6 +617,47 @@ window.BLOOM_DATA = {
   //   intro  一句情境
   //   howto  「怎麼玩」的步驟，每步 { icon 圖示, text 說明 }，盡量一步一個動作
   bosses: {
+    // 月子餐兩難：一天五餐，婆婆要你多喝湯、App 只准吃 1200 大卡。兩邊的要求加起來沒有解。
+    // 熱量和奶量的數字是遊戲設定（示意），不是營養建議；只有「哺乳婦每日增加 500 大卡」是真實出處，寫在結算的 note。
+    mealDilemma: {
+      no: 'BOSS',
+      title: '月子餐兩難',
+      theme: 'day',
+      extra: true, // 只在完整版出現（?short 會跳過）
+      intro: '一天五餐，兩邊都在盯著你的餐盤。',
+      howto: [
+        { icon: '🍽️', text: '每餐三選一，點一道菜吃下去。' },
+        { icon: '👵', text: '婆婆要你多喝湯，才有奶。' },
+        { icon: '🌸', text: 'App 只准你吃 1200 大卡，超過就扣分。' },
+        { icon: '⏱️', text: '每餐只有 6 秒，來不及就被收走。' },
+      ],
+      mealSeconds: 6,
+      cap: 1200,     // App 的熱量上限（虛構）
+      target: 35,    // 奶量目標（遊戲設定）
+      meals: [
+        { name: '早餐', mil: '空腹先喝一碗湯。', app: '早餐熱量別超過 300 喔！',
+          dishes: [{ icon: '🥣', name: '白粥配蛋', cal: 300, milk: 6 }, { icon: '🍲', name: '麻油雞湯', cal: 550, milk: 12 }, { icon: '🥤', name: '代餐奶昔', cal: 200, milk: 3 }] },
+        { name: '點心', mil: '豬腳花生湯最下奶，喝！', app: '點心是熱量殺手，建議跳過。',
+          dishes: [{ icon: '🍵', name: '紅棗茶', cal: 100, milk: 2 }, { icon: '🍖', name: '豬腳花生湯', cal: 600, milk: 13 }, { icon: '🥗', name: '生菜沙拉', cal: 120, milk: 2 }] },
+        { name: '午餐', mil: '飯要吃飽，不然沒力氣。', app: '午餐控制在 400 以內，你可以的！',
+          dishes: [{ icon: '🍚', name: '白飯青菜魚', cal: 520, milk: 10 }, { icon: '🍗', name: '麻油雞飯', cal: 700, milk: 13 }, { icon: '🥗', name: '雞胸沙拉', cal: 150, milk: 3 }] },
+        { name: '下午茶', mil: '再喝一碗魚湯。', app: '下午茶＝脂肪的陷阱 ⚠️',
+          dishes: [{ icon: '🥜', name: '堅果一把', cal: 180, milk: 4 }, { icon: '🐟', name: '鱸魚湯', cal: 300, milk: 8 }, { icon: '🥤', name: '代餐奶昔', cal: 200, milk: 3 }] },
+        { name: '晚餐', mil: '晚上要補，湯和飯都要吃。', app: '晚餐不吃，是最快的瘦身法。',
+          dishes: [{ icon: '🍲', name: '雞湯加飯', cal: 650, milk: 14 }, { icon: '🍱', name: '豆腐青菜飯', cal: 450, milk: 9 }, { icon: '🥗', name: '輕食沙拉', cal: 130, milk: 2 }] },
+      ],
+      skipped: '來不及吃，餐盤被收走了。',
+      over: '超過 App 的上限了！',
+      result: '你這一天吃了 {cal} 大卡（App 上限 {cap}），奶量 {milk}／{target}。{verdict}',
+      verdictBoth: '兩邊都過關，這在這份菜單裡幾乎做不到。',
+      verdictOver: '超過上限，App 扣分。',
+      verdictMilk: '沒超標，但奶量不夠。',
+      verdictNone: '超標，奶量也沒達到。',
+      note: '台北醫學大學附設醫院的孕乳婦飲食衛教寫道，哺乳婦的熱量需要「每日以增加500大卡為宜」。',
+      appOk: '今日熱量達標！明天也要繼續喔 🌸',
+      appOver: '今天熱量超標了！明天少吃一點 💪',
+      theory: 'zhengExpert',
+    },
     nightFeed: {
       no: 'BOSS',
       title: '夜奶節奏戰',
@@ -769,6 +810,16 @@ window.BLOOM_DATA = {
   // 理論卡（第 6 次製作會做成圖鑑）
   // 三層：概念＋出處／你剛剛經歷的／一句話白話
   theories: {
+    // 專家說法互相矛盾，標準卻都落在她身上（月子餐兩難）
+    zhengExpert: {
+      author: '鄭斐文',
+      source: '〈肥胖科學、醫療化與性別身體政治〉，2012，頁 61',
+      concept: '專家說法互相矛盾，嚴苛標準落在她身上',
+      quote: '「理想身體的標準是加入許多不適合一般女性生活樣貌的嚴苛標準」。',
+      experienced: '你剛剛一天吃了 {cal} 大卡，奶量 {milk}／{target}。App 說少吃，婆婆說多喝湯，沒有一種吃法讓兩邊都滿意。',
+      plain: '每個「專家」都有自己的標準，而標準最後都落在她的餐盤上。',
+      demo: { cal: 1650, milk: 24, target: 35 },
+    },
     uenoInstinct: {
       author: '上野千鶴子',
       source: '《父權體制與資本主義》第 2 章 2.1',
