@@ -780,7 +780,7 @@ window.BLOOM_DATA = {
     },
     uenoDouble: {
       author: '上野千鶴子',
-      source: '《父權體制與資本主義》第 10 章 10.5',
+      source: '《父權體制與資本主義》第 10 章 10.5–10.6',
       concept: '第二次妥協：女人多了工作，男人沒有多分家事',
       quote: '「女性的部分生產者化，一點也引不起男性方面的部分再生產者化。」',
       experienced: '你的一天裡，照顧占了 {care} 小時{partnerTxt}。就算第 57 天回去上班，這些方塊也不會消失。',
@@ -1000,6 +1000,8 @@ window.BLOOM_DATA = {
     { title: '什麼都自己扛', desc: '你的照顧時數是伴侶的 5 倍以上。', when: { hoursRatio: 5 } },
     { title: '崩潰了也得繼續', desc: '你崩潰了好幾次，日子還是照樣過。', when: { crashes: 3 } },
     { title: '高風險用戶', desc: 'App 說你不夠努力。', when: { ending: 'fail' } },
+    { title: '拒絕 App 專家', desc: '你拒絕了小綻 8 次以上，它還是每天笑著問你要不要升級。', when: { flags: { 'left:mascot': 8 } } },
+    { title: '開口求助的人', desc: '最累的時候，你對伴侶說了「其實我好累」。', when: { flags: { talk: 1 } } },
     { title: '撐過 180 天的人', desc: '你撐過來了，但不應該只靠你一個人撐。', when: {} },
   ],
 

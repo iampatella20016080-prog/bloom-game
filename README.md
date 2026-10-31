@@ -36,7 +36,7 @@ python3 -m http.server 8765
 | `?boss=2` | 直接玩第 2 章的 Boss |
 | `?skip` | 跳過開場 |
 | `?nosend` | 玩完不送出全班數據 |
-| `?full` | 完整版：所有卡片和每一張理論卡（預設是給同學的 8 分鐘精簡版） |
+| `?short` | 精簡版：跳過標了 `extra` 的卡片，約 8 分鐘（預設是完整版，時間不限） |
 | `?timer` | 右上角顯示碼表，彩排計時用 |
 | `?finale=hidden` | 直接看某一種結局（`hidden`／`reach`／`crash`／`fail`，用示範數字，不送全班數據） |
 

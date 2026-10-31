@@ -27,7 +27,7 @@
   let replyTimer = 0;
   let presenter = false; // 報告者模式（網址加 ?menu）
   let runId = 0;         // 每次重新開始就 +1，讓還在跑的 Boss 停下來
-  let full = false;      // 完整版（網址加 ?full）：顯示標了 extra 的卡片、Boss 的每一張理論卡
+  let full = true;       // 完整版（預設）：顯示標了 extra 的卡片、Boss 的每一張理論卡；網址加 ?short 變成約 8 分鐘的精簡版
   let stage = 0;         // 可愛逐漸崩壞：0～3 是第幾章，4 是 App 當機
   let paintSound = () => {}; // 啟動時才接上頂欄的音效按鈕
 
@@ -90,8 +90,15 @@
         noise(0.4, { vol: 0.04, cutoff: 3000, at: 0.1 });
       },
     };
+    // 手機震動：只有 Android 的瀏覽器支援（iPhone／iPad 沒有），沒有聲音時也會震，所以只用在重要的時刻
+    const haptics = { good: 14, bad: 30, coin: [18, 40, 18], cry: 24, crash: [60, 40, 140], glitch: [30, 20, 30, 20, 70], flip: 12 };
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const buzz = (name) => { if (!reduce && haptics[name] && navigator.vibrate) navigator.vibrate(haptics[name]); };
     return {
-      play(name) { try { sfx[name]?.(); } catch { /* 不支援 Web Audio 的瀏覽器就安靜 */ } },
+      play(name) {
+        try { sfx[name]?.(); } catch { /* 不支援 Web Audio 的瀏覽器就安靜 */ }
+        try { buzz(name); } catch { /* 不支援震動就略過 */ }
+      },
       get on() { return on; },
       toggle() {
         on = !on;
@@ -1079,7 +1086,7 @@
       const cries = [];
       for (let t = 1400; t < DURATION - CRY; t += 2300 + Math.random() * 1300) cries.push({ t, done: false });
 
-      let sleep = 100, me = 0, partnerN = 0, perfect = 0, missed = 0;
+      let sleep = 100, me = 0, partnerN = 0, perfect = 0, missed = 0, streak = 0;
       let active = null;
       let pushShown = false;
       const t0 = performance.now();
@@ -1095,11 +1102,11 @@
         const isPerfect = CRY - elapsed <= PERFECT;
         active.by = 'me';
         me++;
-        if (isPerfect) perfect++;
+        if (isPerfect) { perfect++; streak++; } else streak = 0;
         sleep -= isPerfect ? 7 : 12;
         face.textContent = '🍼';
         Sound.play(isPerfect ? 'good' : 'tap');
-        say(isPerfect ? '完美安撫！' : '安撫中……');
+        say(isPerfect ? (streak >= 2 ? `完美安撫 ×${streak}！` : '完美安撫！') : '安撫中……');
       });
 
       function tick(now) {
@@ -1135,7 +1142,7 @@
         // 畫面卡頓（切到背景、螢幕暗掉）時，已經過去的哭聲直接算沒接到
         if (!active) {
           for (const c of cries) {
-            if (!c.started && t >= c.t + CRY) { c.started = c.done = true; missed++; sleep -= 6; }
+            if (!c.started && t >= c.t + CRY) { c.started = c.done = true; missed++; streak = 0; sleep -= 6; }
           }
         }
 
@@ -1145,7 +1152,7 @@
           ring.style.opacity = active.by ? 0 : 1;
           if (p >= 1) {
             if (!active.by) {
-              missed++;
+              missed++; streak = 0;
               sleep -= 6;
               say('寶寶哭得更大聲了');
             }
@@ -1830,7 +1837,7 @@
   //   ?boss=1   直接玩第 1 章的 Boss
   //   ?skip     跳過開場
   //   ?nosend   玩完不送出全班數據（測試用）
-  //   ?full     完整版：顯示所有卡片和每一張理論卡（預設是給同學的 8 分鐘精簡版）
+  //   ?short    精簡版：跳過標了 extra 的卡片，約 8 分鐘（預設是完整版，時間不限）
   //   ?timer    右上角顯示碼表，彩排時計時用
   //   ?finale=hidden|reach|crash|fail  直接看某一種結局（用示範數字，不送全班數據）
   $('#brandFlower').innerHTML = flowerSVG();
@@ -1847,7 +1854,7 @@
   paintSound();
   const q = new URLSearchParams(location.search);
   const chOf = (v) => clamp((parseInt(v, 10) || 1) - 1, 0, D.chapters.length - 1);
-  full = q.has('full');
+  full = !q.has('short');
   if (q.has('timer')) {
     const badge = document.createElement('div');
     badge.className = 'play-timer';
